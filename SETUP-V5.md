@@ -1,72 +1,153 @@
-# Configuration V5 — uniquement les fonctions demandées
+// La Dispensa Di Rocco — V5
+const body = document.body;
+const header = document.querySelector(".header");
+const intro = document.querySelector("#intro");
+const menuToggle = document.querySelector(".menu-toggle");
+const navLinks = [...document.querySelectorAll(".nav a[href^='#']")];
 
-## 1. Statut OUVERT / FERMÉ connecté à Discord
+const lightbox = document.querySelector("#menu-lightbox");
+const menuOpen = document.querySelector("#menu-open");
+const menuClose = document.querySelector("#menu-close");
+const lightboxImage = document.querySelector("#lightbox-image");
+const viewport = document.querySelector("#lightbox-viewport");
+const zoomIn = document.querySelector("#zoom-in");
+const zoomOut = document.querySelector("#zoom-out");
+const zoomValue = document.querySelector("#zoom-value");
 
-Le site lit maintenant le statut depuis `/api/status` et l'actualise toutes les 15 secondes.
+const navStatus = document.querySelector("#nav-status");
+const navStatusText = document.querySelector("#nav-status-text");
+const businessStatus = document.querySelector("#business-status");
+const businessStatusText = document.querySelector("#business-status-text");
 
-Le backend Discord est prêt dans :
+document.querySelector("#year").textContent = new Date().getFullYear();
 
-```text
-functions/discord/interactions.js
-```
+// Animation d'entrée courte.
+window.addEventListener("load", () => {
+  window.setTimeout(() => intro.classList.add("hidden"), 900);
+});
 
-Il accepte deux boutons Discord :
+window.addEventListener("scroll", () => {
+  header.classList.toggle("scrolled", window.scrollY > 35);
+}, { passive: true });
 
-```text
-restaurant_open
-restaurant_closed
-```
+menuToggle.addEventListener("click", () => {
+  const open = body.classList.toggle("menu-open");
+  menuToggle.setAttribute("aria-expanded", String(open));
+});
 
-et il est limité au message Discord :
+navLinks.forEach(link => {
+  link.addEventListener("click", () => {
+    body.classList.remove("menu-open");
+    menuToggle.setAttribute("aria-expanded", "false");
+  });
+});
 
-```text
-1537545350313938954
-```
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("visible");
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: .12 });
 
-### Cloudflare
+document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
 
-Dans Cloudflare Pages :
+const sectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const id = entry.target.id;
+    navLinks.forEach(link => {
+      link.classList.toggle("active", id && link.getAttribute("href") === `#${id}`);
+    });
+  });
+}, { rootMargin: "-35% 0px -55% 0px" });
 
-1. Crée un namespace **Workers KV**.
-2. Dans ton projet Pages : **Settings → Bindings → Add → KV namespace**.
-3. Variable name : `SITE_STATE`.
-4. Sélectionne le namespace créé.
-5. Ajoute une variable/secrète Pages :
-   - `DISCORD_PUBLIC_KEY` = clé publique de ton application Discord.
-6. Redéploie le site.
+document.querySelectorAll("main section[id]").forEach(section => sectionObserver.observe(section));
 
-### Discord
+// Statut OUVERT / FERMÉ synchronisé avec Cloudflare KV.
+// Le bouton Discord "OUVERTURE" écrit open, "FERMETURE" écrit closed.
+function paintStatus(status) {
+  const open = status === "open";
+  const closed = status === "closed";
 
-Dans le Developer Portal de ton application Discord, mets comme **Interactions Endpoint URL** :
+  [navStatus, businessStatus].forEach(element => {
+    element.classList.remove("status-loading", "status-open", "status-closed");
+    element.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
+  });
 
-```text
-https://TON-SITE.pages.dev/discord/interactions
-```
+  const label = open ? "OUVERT" : closed ? "FERMÉ" : "INDISPONIBLE";
+  navStatusText.textContent = label;
+  businessStatusText.textContent = label;
+}
 
-Les boutons qui mettent le site à jour doivent être des boutons interactifs envoyés par **cette application Discord** et avoir les `custom_id` exacts :
+async function refreshStatus() {
+  try {
+    const response = await fetch("/api/status", { cache: "no-store" });
+    if (!response.ok) throw new Error("status api");
+    const data = await response.json();
+    paintStatus(data.status);
+  } catch {
+    paintStatus("unknown");
+  }
+}
 
-- OUVERTURE → `restaurant_open`
-- FERMETURE → `restaurant_closed`
+refreshStatus();
+window.setInterval(refreshStatus, 15000);
 
-Important : un simple lien vers un message Discord ne peut pas, à lui seul, prévenir ton site lorsqu'un membre clique sur un bouton. L'interaction doit passer par une application/bot Discord.
+// Carte plein écran + zoom.
+let zoom = 1;
 
-Le badge du site renvoie déjà vers ton message :
+function applyZoom() {
+  const baseWidth = window.innerWidth <= 650 ? 1100 : Math.min(1500, window.innerWidth * .94);
+  lightboxImage.style.width = `${Math.round(baseWidth * zoom)}px`;
+  zoomValue.textContent = `${Math.round(zoom * 100)}%`;
+}
 
-https://discord.com/channels/1529971523924791478/1537538848660390018/1537545350313938954
+function openLightbox() {
+  zoom = 1;
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+  body.classList.add("lightbox-open");
+  applyZoom();
+  menuClose.focus();
+}
 
-## 2. ADMIN réellement protégé
+function closeLightbox() {
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden", "true");
+  body.classList.remove("lightbox-open");
+}
 
-Le bouton ADMIN pointe vers :
+menuOpen.addEventListener("click", openLightbox);
+menuClose.addEventListener("click", closeLightbox);
 
-https://stocks-ladispensadirocco.pages.dev
+zoomIn.addEventListener("click", () => {
+  zoom = Math.min(2.2, zoom + .2);
+  applyZoom();
+});
 
-Pour que l'accès soit réellement protégé, active **Cloudflare Access** directement sur le projet `stocks-ladispensadirocco`.
+zoomOut.addEventListener("click", () => {
+  zoom = Math.max(.6, zoom - .2);
+  applyZoom();
+});
 
-Dans le projet de stocks :
-1. Workers & Pages → projet stocks → Settings.
-2. Active une **Access policy** pour le domaine `stocks-ladispensadirocco.pages.dev`.
-3. Dans Zero Trust → Access → Applications, choisis qui peut entrer (emails/comptes autorisés).
+lightbox.addEventListener("click", event => {
+  if (event.target === lightbox) closeLightbox();
+});
 
-Cette protection se fait avant que le site de stocks ne soit servi : connaître l'URL ne suffit plus.
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+  if (lightbox.classList.contains("open") && event.key === "+") {
+    zoom = Math.min(2.2, zoom + .2);
+    applyZoom();
+  }
+  if (lightbox.classList.contains("open") && event.key === "-") {
+    zoom = Math.max(.6, zoom - .2);
+    applyZoom();
+  }
+});
 
-L'ancienne page `admin.html` avec mot de passe côté navigateur a été supprimée.
+window.addEventListener("resize", () => {
+  if (lightbox.classList.contains("open")) applyZoom();
+});
