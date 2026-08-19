@@ -43,15 +43,47 @@ npx wrangler deploy
 
 Le nom du Worker doit être **dispensadirocco**.
 
-## Bindings requis (dashboard Cloudflare)
+## Bindings requis
 
 | Nom | Type | Rôle |
 |-----|------|------|
-| `SITE_STATE` | KV Namespace | Statut OUVERT / FERMÉ |
+| `SITE_STATE` | KV Namespace | Statut OUVERT / FERMÉ + liste admin |
 | `DISCORD_PUBLIC_KEY` | Secret | Vérification des interactions Discord |
 | `ASSETS` | Assets | Configuré automatiquement via `wrangler.jsonc` |
 
 Variables déjà dans `wrangler.jsonc` : `DISCORD_GUILD_ID`, `DISCORD_CHANNEL_ID`, `DISCORD_MESSAGE_ID`.
+
+### Persistance du KV (important)
+
+`keep_vars: true` ne conserve que les **variables texte** du dashboard. Les **bindings KV ne sont pas conservés** s’ils ne sont pas aussi déclarés dans `wrangler.jsonc`.
+
+Sans ça, un déploiement GitHub / `wrangler deploy` peut **retirer** `SITE_STATE` — c’est ce qui s’est produit avant.
+
+**Étape 1 — Récupérer l’ID du namespace**
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers KV**
+2. Ouvre le namespace **`dispensa-status`**
+3. Copie l’**Namespace ID** (32 caractères hexadécimaux)
+
+**Étape 2 — L’ajouter dans `wrangler.jsonc`**
+
+```jsonc
+"kv_namespaces": [
+  {
+    "binding": "SITE_STATE",
+    "id": "COLLE_TON_NAMESPACE_ID_ICI"
+  }
+],
+```
+
+**Étape 3 — Commit + push** (ou `npx wrangler deploy`)
+
+Après ça, chaque déploiement réappliquera automatiquement le binding KV.
+
+**Vérification rapide** : ouvre `https://<ton-domaine>/api/status`
+
+- `{"status":"unknown",...}` ou `"open"` / `"closed"` → KV **OK**
+- `{"setupRequired":"SITE_STATE KV binding",...}` → KV **manquant**
 
 Endpoint Discord : `https://<ton-domaine>/discord/interactions`
 
