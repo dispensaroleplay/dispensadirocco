@@ -14,9 +14,6 @@ const zoomIn = document.querySelector("#zoom-in");
 const zoomOut = document.querySelector("#zoom-out");
 const zoomValue = document.querySelector("#zoom-value");
 
-const businessStatus = document.querySelector("#business-status");
-const businessStatusText = document.querySelector("#business-status-text");
-
 document.querySelector("#year").textContent = new Date().getFullYear();
 
 const DISCORD_WEB = "https://discord.com/channels/1529971523924791478/1529977191859879956";
@@ -65,16 +62,16 @@ window.addEventListener("scroll", () => {
   header.classList.toggle("scrolled", window.scrollY > 35);
 }, { passive: true });
 
-menuToggle.addEventListener("click", () => {
+menuToggle?.addEventListener("click", () => {
   const open = body.classList.toggle("menu-open");
   menuToggle.setAttribute("aria-expanded", String(open));
 });
 
-navLinks.forEach(link => {
-  link.addEventListener("click", () => {
+document.querySelector(".nav")?.addEventListener("click", event => {
+  if (event.target.closest("a")) {
     body.classList.remove("menu-open");
-    menuToggle.setAttribute("aria-expanded", "false");
-  });
+    menuToggle?.setAttribute("aria-expanded", "false");
+  }
 });
 
 const revealObserver = new IntersectionObserver(entries => {
@@ -99,33 +96,6 @@ const sectionObserver = new IntersectionObserver(entries => {
 }, { rootMargin: "-35% 0px -55% 0px" });
 
 document.querySelectorAll("main section[id]").forEach(section => sectionObserver.observe(section));
-
-// Statut OUVERT / FERMÉ synchronisé avec Cloudflare KV.
-// Le bouton Discord "OUVERTURE" écrit open, "FERMETURE" écrit closed.
-function paintStatus(status) {
-  const open = status === "open";
-  const closed = status === "closed";
-
-  businessStatus.classList.remove("status-loading", "status-open", "status-closed");
-  businessStatus.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
-
-  const label = open ? "OUVERT" : closed ? "FERMÉ" : "INDISPONIBLE";
-  businessStatusText.textContent = label;
-}
-
-async function refreshStatus() {
-  try {
-    const response = await fetch("/api/status", { cache: "no-store" });
-    if (!response.ok) throw new Error("status api");
-    const data = await response.json();
-    paintStatus(data.status);
-  } catch {
-    paintStatus("unknown");
-  }
-}
-
-refreshStatus();
-window.setInterval(refreshStatus, 15000);
 
 // Carte plein écran + zoom.
 let zoom = 1;

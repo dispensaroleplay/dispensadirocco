@@ -30,6 +30,14 @@ body {
 body.menu-open,
 body.lightbox-open { overflow: hidden; }
 
+body.menu-open .header {
+  z-index: 1100;
+}
+
+body.menu-open .noise {
+  z-index: 90;
+}
+
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 button { font: inherit; }
@@ -59,6 +67,8 @@ button { font: inherit; }
 
 .intro img {
   width: 130px;
+  height: 130px;
+  object-fit: cover;
   border-radius: 50%;
   opacity: 0;
   transform: scale(.94);
@@ -121,6 +131,7 @@ button { font: inherit; }
 .brand img {
   width: 50px;
   height: 50px;
+  flex-shrink: 0;
   object-fit: cover;
   border-radius: 50%;
 }
@@ -236,6 +247,7 @@ button { font: inherit; }
   position: relative;
   z-index: 120;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .menu-toggle span {
@@ -621,6 +633,9 @@ button { font: inherit; }
 
 .hero-visual > img {
   width: min(560px, 90%);
+  aspect-ratio: 1;
+  height: auto;
+  object-fit: cover;
   border-radius: 50%;
   box-shadow:
     0 42px 110px rgba(0, 0, 0, .7),
@@ -880,10 +895,26 @@ button { font: inherit; }
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   border: 1px solid var(--line);
   background: var(--line);
+}
+
+.info-grid .phone-line {
+  display: block;
+}
+
+.info-grid .phone-line + .phone-line {
+  margin-top: 8px;
+}
+
+.contact-list .phone-line {
+  display: block;
+}
+
+.contact-list .phone-line + .phone-line {
+  margin-top: 6px;
 }
 
 .info-grid div {
@@ -961,6 +992,7 @@ button { font: inherit; }
 .footer-brand img {
   width: 48px;
   height: 48px;
+  flex-shrink: 0;
   object-fit: cover;
   border-radius: 50%;
 }
@@ -1133,6 +1165,7 @@ button { font: inherit; }
     opacity: 1;
     pointer-events: auto;
     transform: none;
+    z-index: 110;
   }
 
   .nav > a:not(.status-pill):not(.admin-link) {
