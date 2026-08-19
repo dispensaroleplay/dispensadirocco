@@ -3,7 +3,7 @@
 // This Worker handles:
 // - GET  /api/status
 // - POST /discord/interactions
-// - all static site files through env.ASSETS (./public)
+// - all static site files through env.ASSETS (./site)
 //
 // Secrets are NOT stored in this file.
 // They are injected by Cloudflare through env.* bindings.

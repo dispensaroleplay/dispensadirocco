@@ -1,23 +1,24 @@
-# Cloudflare Workers
+# Cloudflare Workers — déploiement
 
-Les fichiers publics du site sont dans `public/` :
+## Structure
+
+Les fichiers du site sont dans `site/` :
 
 ```text
-public/index.html
-public/404.html
-public/styles.css
-public/script.js
-public/assets/
+site/index.html
+site/404.html
+site/styles.css
+site/script.js
+site/assets/
 worker.js
 wrangler.jsonc
-package.json
 ```
 
-Le `wrangler.jsonc` utilise :
+`wrangler.jsonc` :
 
 ```json
 "assets": {
-  "directory": "./public",
+  "directory": "./site",
   "binding": "ASSETS",
   "not_found_handling": "404-page",
   "html_handling": "none",
@@ -25,17 +26,19 @@ Le `wrangler.jsonc` utilise :
 }
 ```
 
-Ne pas mettre `assets.directory` sur `"."` : Cloudflare essaierait d’uploader `.git` et `node_modules`, ce qui fait échouer le déploiement (limite 25 Mo).
+Ne pas utiliser `"."` comme directory : Wrangler inclurait `.git` et `node_modules`, ce qui fait échouer le déploiement.
 
-## Déploiement
+## Commandes
 
 ```bash
 npm install
 npx wrangler deploy
 ```
 
-Sur Cloudflare (Workers Builds), commande de deploy : `npx wrangler deploy`.
+## Dashboard Cloudflare
 
-Le Worker dans le dashboard doit s’appeler **dispensadirocco** (même `name` que dans `wrangler.jsonc`).
+- **Build command** : `npm run build` (optionnel)
+- **Deploy command** : `npx wrangler deploy`
+- **Root directory** : laisser vide (racine du repo)
 
-L’URL `/` est gérée par `worker.js`, qui sert explicitement `/index.html`.
+Le nom du Worker doit être **dispensadirocco**.

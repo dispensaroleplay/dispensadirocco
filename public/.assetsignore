@@ -1,8 +1,0 @@
-.git
-.git/
-node_modules/
-.wrangler/
-*.md
-.dev.vars
-.env
-.env.*
