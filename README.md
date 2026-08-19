@@ -1,68 +1,19 @@
-# La Dispensa Di Rocco — V4
+# La Dispensa Di Rocco — V5
 
-Cette version remplace complètement l'ancienne V3. Le CSS et le JavaScript ont été réécrits proprement afin de supprimer les anciennes règles inutilisées.
+V5 ciblée uniquement sur les modifications demandées :
 
-## Fichiers
-
-```text
-index.html
-admin.html
-styles.css
-script.js
-assets/
-  logo.webp
-  carte.webp
-  restaurant.webp
-  plat.webp
-```
-
-## Changements
-
-- thème noir / or premium
-- vert / blanc / rouge conservés uniquement en accent
-- bouton Commander de l'accueil vers Discord
-- suppression du protocole `discord://`
-- carte agrandissable en plein écran
-- galerie optimisée
-- bloc Informations RP avec statut OUVERT / FERMÉ
-- navigation active selon la section visible
-- favicon
+- statut OUVERT / FERMÉ visible dans la barre du haut
+- backend prêt pour synchronisation avec boutons Discord
+- bouton Commander flottant sur mobile
+- carte plein écran avec Commander + zoom
+- lore renforcé dans Notre histoire
+- ADMIN prévu pour une vraie protection Cloudflare Access
+- ornements noir/or plus présents mais discrets
+- animation d'entrée courte
 - métadonnées de partage Discord / Open Graph
-- chargement différé des images lourdes
-- bouton ADMIN vers une page protégée par mot de passe
-- images converties en WebP pour réduire le poids
+- footer enrichi
+- page 404 personnalisée
+- ancien code V4 inutile supprimé
 
-## Changer OUVERT / FERMÉ
-
-Dans `script.js`, première ligne utile :
-
-```js
-const BUSINESS_OPEN = true;
-```
-
-Passe à `false` pour afficher FERMÉ.
-
-## Accès ADMIN
-
-Le bouton `ADMIN` ouvre `admin.html`.
-
-Si le mot de passe est correct, l'utilisateur est redirigé vers :
-
-https://stocks-ladispensadirocco.pages.dev
-
-## Important concernant la sécurité
-
-La vérification du mot de passe est faite dans le navigateur, car le site est statique.
-Le mot de passe n'est pas écrit en clair dans `admin.html` : seul son hash SHA-256 est stocké.
-
-Mais ce système n'est pas une vraie protection serveur. Une personne expérimentée peut contourner une protection côté navigateur, et l'URL de stocks reste directement accessible si quelqu'un la connaît.
-
-Pour une vraie restriction d'accès, il faudra protéger également le site de stocks côté Cloudflare (authentification serveur / Cloudflare Access / équivalent).
-
-
-## Correctif V4.1 — liens Discord
-
-Les boutons **Commander**, **Candidater** et **Nous contacter** ouvrent maintenant
-le lien Discord directement dans l'onglet courant (`target="_self"`).
-
-Cela évite les blocages éventuels liés à l'ouverture d'un nouvel onglet.
+Voir `SETUP-V5.md` pour les deux réglages externes nécessaires :
+Discord + Cloudflare Access.

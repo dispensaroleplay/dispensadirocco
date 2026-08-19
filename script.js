@@ -1,16 +1,30 @@
-// La Dispensa Di Rocco — V4
-const BUSINESS_OPEN = true; // Mets false quand le restaurant est fermé.
-
+// La Dispensa Di Rocco — V5
 const body = document.body;
 const header = document.querySelector(".header");
+const intro = document.querySelector("#intro");
 const menuToggle = document.querySelector(".menu-toggle");
 const navLinks = [...document.querySelectorAll(".nav a[href^='#']")];
-const statusBadge = document.querySelector("#business-status");
+
 const lightbox = document.querySelector("#menu-lightbox");
 const menuOpen = document.querySelector("#menu-open");
 const menuClose = document.querySelector("#menu-close");
+const lightboxImage = document.querySelector("#lightbox-image");
+const viewport = document.querySelector("#lightbox-viewport");
+const zoomIn = document.querySelector("#zoom-in");
+const zoomOut = document.querySelector("#zoom-out");
+const zoomValue = document.querySelector("#zoom-value");
+
+const navStatus = document.querySelector("#nav-status");
+const navStatusText = document.querySelector("#nav-status-text");
+const businessStatus = document.querySelector("#business-status");
+const businessStatusText = document.querySelector("#business-status-text");
 
 document.querySelector("#year").textContent = new Date().getFullYear();
+
+// Animation d'entrée courte.
+window.addEventListener("load", () => {
+  window.setTimeout(() => intro.classList.add("hidden"), 900);
+});
 
 window.addEventListener("scroll", () => {
   header.classList.toggle("scrolled", window.scrollY > 35);
@@ -51,8 +65,53 @@ const sectionObserver = new IntersectionObserver(entries => {
 
 document.querySelectorAll("main section[id]").forEach(section => sectionObserver.observe(section));
 
-statusBadge.textContent = BUSINESS_OPEN ? "OUVERT" : "FERMÉ";
-statusBadge.classList.add(BUSINESS_OPEN ? "open" : "closed");
+// Statut OUVERT / FERMÉ synchronisé avec Cloudflare KV.
+// Le bouton Discord "OUVERTURE" écrit open, "FERMETURE" écrit closed.
+function paintStatus(status) {
+  const open = status === "open";
+  const closed = status === "closed";
+
+  [navStatus, businessStatus].forEach(element => {
+    element.classList.remove("status-loading", "status-open", "status-closed");
+    element.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
+  });
+
+  const label = open ? "OUVERT" : closed ? "FERMÉ" : "INDISPONIBLE";
+  navStatusText.textContent = label;
+  businessStatusText.textContent = label;
+}
+
+async function refreshStatus() {
+  try {
+    const response = await fetch("/api/status", { cache: "no-store" });
+    if (!response.ok) throw new Error("status api");
+    const data = await response.json();
+    paintStatus(data.status);
+  } catch {
+    paintStatus("unknown");
+  }
+}
+
+refreshStatus();
+window.setInterval(refreshStatus, 15000);
+
+// Carte plein écran + zoom.
+let zoom = 1;
+
+function applyZoom() {
+  const baseWidth = window.innerWidth <= 650 ? 1100 : Math.min(1500, window.innerWidth * .94);
+  lightboxImage.style.width = `${Math.round(baseWidth * zoom)}px`;
+  zoomValue.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function openLightbox() {
+  zoom = 1;
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+  body.classList.add("lightbox-open");
+  applyZoom();
+  menuClose.focus();
+}
 
 function closeLightbox() {
   lightbox.classList.remove("open");
@@ -60,14 +119,18 @@ function closeLightbox() {
   body.classList.remove("lightbox-open");
 }
 
-menuOpen.addEventListener("click", () => {
-  lightbox.classList.add("open");
-  lightbox.setAttribute("aria-hidden", "false");
-  body.classList.add("lightbox-open");
-  menuClose.focus();
+menuOpen.addEventListener("click", openLightbox);
+menuClose.addEventListener("click", closeLightbox);
+
+zoomIn.addEventListener("click", () => {
+  zoom = Math.min(2.2, zoom + .2);
+  applyZoom();
 });
 
-menuClose.addEventListener("click", closeLightbox);
+zoomOut.addEventListener("click", () => {
+  zoom = Math.max(.6, zoom - .2);
+  applyZoom();
+});
 
 lightbox.addEventListener("click", event => {
   if (event.target === lightbox) closeLightbox();
@@ -75,4 +138,16 @@ lightbox.addEventListener("click", event => {
 
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+  if (lightbox.classList.contains("open") && event.key === "+") {
+    zoom = Math.min(2.2, zoom + .2);
+    applyZoom();
+  }
+  if (lightbox.classList.contains("open") && event.key === "-") {
+    zoom = Math.max(.6, zoom - .2);
+    applyZoom();
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (lightbox.classList.contains("open")) applyZoom();
 });
