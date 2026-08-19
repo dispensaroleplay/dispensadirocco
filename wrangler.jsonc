@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-
   "name": "dispensadirocco",
   "main": "./worker.js",
   "compatibility_date": "2026-08-19",
@@ -25,7 +24,7 @@
   "kv_namespaces": [
     {
       "binding": "SITE_STATE",
-      "id": "0d17112d3f5949399ab3c72051b47338"
+      "id": "TON_ID_KV"
     }
   ],
 
