@@ -338,7 +338,7 @@ async function handleAdminCallback(request, env) {
     return redirect("/?admin=error");
   }
 
-  const destination = env.ADMIN_REDIRECT_URL || "/";
+  const destination = "/?admin=connected";
   return redirect(destination, {
     headers: { "Set-Cookie": sessionCookie(session, request) }
   });

@@ -50,6 +50,11 @@ async function refreshAdminAccess() {
 }
 
 refreshAdminAccess();
+window.addEventListener("focus", refreshAdminAccess);
+
+if (new URLSearchParams(location.search).get("admin") === "connected") {
+  window.setTimeout(refreshAdminAccess, 100);
+}
 
 // Animation d'entrée courte.
 window.addEventListener("load", () => {
