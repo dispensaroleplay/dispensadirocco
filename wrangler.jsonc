@@ -3,7 +3,6 @@
   "name": "dispensadirocco",
   "main": "./worker.js",
   "compatibility_date": "2026-08-19",
-
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
@@ -14,26 +13,11 @@
       "/discord/*"
     ]
   },
-
   "vars": {
     "DISCORD_GUILD_ID": "1529971523924791478",
     "DISCORD_CHANNEL_ID": "1537538848660390018",
     "DISCORD_MESSAGE_ID": "1537545350313938954"
   },
-
-  "kv_namespaces": [
-    {
-      "binding": "SITE_STATE",
-      "id": "TON_ID_KV"
-    }
-  ],
-
-  "secrets": {
-    "required": [
-      "DISCORD_PUBLIC_KEY"
-    ]
-  },
-
   "observability": {
     "enabled": true
   }
