@@ -234,6 +234,8 @@ async function verifyDiscordInteraction(request, rawBody, env) {
 
   return false;
 }
+
+async function getRestaurantStatus(env) {
   if (!env.SITE_STATE) {
     return json({
       status: "unknown",
