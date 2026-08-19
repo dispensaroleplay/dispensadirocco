@@ -1,17 +1,36 @@
-# V5.3 — Déploiement propre Cloudflare Workers
+# V5.5 — Cloudflare Workers sans dossier public
 
-Cette version est volontairement conçue pour **déployer d'abord sans KV ni secret**.
+Cette version supprime complètement le besoin d'un dossier `public/`.
 
-Le fichier `wrangler.jsonc` est du JSON strict et ne contient aucun placeholder.
-Il doit commencer par :
+Les fichiers du site sont directement à la racine du dépôt :
 
-```json
-{
+```text
+index.html
+404.html
+styles.css
+script.js
+assets/
+worker.js
+wrangler.jsonc
+.assetsignore
 ```
 
-et PAS par `#`, `:root`, ou du CSS.
+Le `wrangler.jsonc` utilise maintenant :
 
-## Étape 1 — Déployer
+```json
+"assets": {
+  "directory": ".",
+  "binding": "ASSETS",
+  "not_found_handling": "404-page",
+  "html_handling": "none",
+  "run_worker_first": true
+}
+```
+
+`.assetsignore` empêche `worker.js`, `wrangler.jsonc`, les README et les fichiers
+de configuration d'être exposés comme assets publics.
+
+## Déploiement
 
 Commande :
 
@@ -19,62 +38,11 @@ Commande :
 npx wrangler deploy
 ```
 
-Le site doit pouvoir se déployer même si KV et Discord ne sont pas encore configurés.
+## Important
 
-## Étape 2 — Ajouter le KV dans Cloudflare
+Sur GitHub, tu n'as plus besoin d'un dossier `public`.
 
-Dans le Dashboard :
+Vérifie simplement que `index.html` est bien à la racine, au même niveau que
+`worker.js` et `wrangler.jsonc`.
 
-Workers & Pages → ton Worker → Settings → Bindings → Add → KV Namespace
-
-Variable name :
-
-```text
-SITE_STATE
-```
-
-Sélectionne ton namespace KV puis déploie.
-
-## Étape 3 — Ajouter le secret Discord
-
-Dans :
-
-Workers & Pages → ton Worker → Settings → Variables and Secrets
-
-Ajoute un **Secret** :
-
-```text
-DISCORD_PUBLIC_KEY
-```
-
-Valeur : la Public Key de ton application Discord.
-
-Le secret n'est jamais stocké dans GitHub.
-
-## IDs Discord déjà dans wrangler.jsonc
-
-```text
-DISCORD_GUILD_ID   = 1529971523924791478
-DISCORD_CHANNEL_ID = 1537538848660390018
-DISCORD_MESSAGE_ID = 1537545350313938954
-```
-
-## Boutons Discord attendus
-
-```text
-OUVERTURE  -> restaurant_open
-FERMETURE  -> restaurant_closed
-```
-
-## Endpoint Discord
-
-```text
-https://TON-WORKER.workers.dev/discord/interactions
-```
-
-## Si Cloudflare affiche encore `:root {` dans wrangler.jsonc
-
-Alors Cloudflare ne clone PAS le bon contenu GitHub.
-
-Sur GitHub, ouvre `wrangler.jsonc` et vérifie visuellement que la première ligne est `{`.
-Vérifie ensuite dans Cloudflare la branche de production reliée au Worker.
+L'URL `/` est gérée par `worker.js`, qui sert explicitement `/index.html`.

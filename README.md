@@ -1,11 +1,8 @@
-# La Dispensa Di Rocco — V5.3 Workers Clean
+# La Dispensa Di Rocco — V5.5 Workers
 
-Version de dépannage propre :
+Correctif pour ton dépôt actuel : plus besoin du dossier `public/`.
 
-- `wrangler.jsonc` = JSON strict valide
-- aucun placeholder KV dans le fichier
-- aucun secret requis au moment du premier déploiement
-- `worker.js` ne plante pas si KV/secret ne sont pas encore configurés
-- KV et secret se configurent ensuite depuis le Dashboard Cloudflare
-
-Voir `SETUP-WORKERS.md`.
+- fichiers du site à la racine
+- `assets.directory` = `.`
+- `.assetsignore` protège les fichiers serveur/config
+- `worker.js` sert `/index.html` pour l'URL racine
