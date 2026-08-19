@@ -451,13 +451,6 @@ async function handleDiscordInteraction(request, env) {
     );
   }
 
-  if (!env.SITE_STATE) {
-    return json(
-      { error: "SITE_STATE KV binding is not configured" },
-      { status: 503 }
-    );
-  }
-
   const rawBody = await request.text();
 
   const valid = await verifyDiscordInteraction(request, rawBody, env);
@@ -474,8 +467,16 @@ async function handleDiscordInteraction(request, env) {
     return new Response("invalid json", { status: 400 });
   }
 
+  // Discord PING — ne nécessite pas le binding KV.
   if (interaction.type === 1) {
     return json({ type: 1 });
+  }
+
+  if (!env.SITE_STATE) {
+    return json(
+      { error: "SITE_STATE KV binding is not configured" },
+      { status: 503 }
+    );
   }
 
   if (interaction.type === 2) {
