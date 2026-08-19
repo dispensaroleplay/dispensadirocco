@@ -984,3 +984,100 @@ textarea {
     width: 100%;
   }
 }
+
+
+/* ================================
+   GALERIE PHOTOS
+================================ */
+.gallery-grid-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+  gap: 18px;
+  grid-template-rows: none;
+}
+
+.gallery-photo {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #080808;
+  min-height: 520px;
+}
+
+.gallery-photo img {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.65s ease, filter 0.65s ease;
+}
+
+.gallery-photo-restaurant img {
+  object-position: center center;
+}
+
+.gallery-photo-dish img {
+  object-position: center center;
+}
+
+.gallery-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.08) 42%,
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.gallery-photo:hover img {
+  transform: scale(1.025);
+  filter: brightness(1.05);
+}
+
+.gallery-photo figcaption {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.gallery-photo figcaption span {
+  font-family: var(--serif);
+  font-size: 2rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.gallery-photo figcaption p {
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 850px) {
+  .gallery-grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-photo,
+  .gallery-photo img {
+    min-height: 340px;
+  }
+
+  .gallery-photo-dish,
+  .gallery-photo-dish img {
+    min-height: 300px;
+  }
+}

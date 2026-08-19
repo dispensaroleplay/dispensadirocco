@@ -1,5 +1,19 @@
 # La Dispensa Di Rocco — Site RP
 
+## Version V3
+
+Modifications :
+- Photo du restaurant intégrée dans la galerie.
+- Photo d'un plat intégrée dans la galerie.
+- Bloc "Photo de l'équipe" supprimé.
+- Les boutons **Commander**, **Candidater** et **Nous contacter** tentent désormais
+  d'ouvrir directement l'application Discord.
+- Si l'application Discord n'est pas disponible ou que le navigateur bloque le
+  protocole, le lien web est utilisé en secours.
+
+Salon ciblé :
+https://discord.com/channels/1529971523924791478/1529977191859879956
+
 ## Structure
 
 ```text
@@ -9,27 +23,12 @@ la-dispensa-di-rocco/
 ├── script.js
 └── assets/
     ├── logo.png
-    └── carte.png
+    ├── carte.png
+    ├── restaurant.png
+    └── plat.png
 ```
 
-## Modifications intégrées
+## Mise à jour GitHub
 
-- Carte visuelle remplacée par l'image fournie.
-- Section réservation supprimée.
-- Bouton **Commander** vers Discord :
-  https://discord.com/channels/1529971523924791478/1529977191859879956
-- Bouton **Candidater** vers Discord.
-- Partie contact :
-  - Téléphone : `(602)-056-5969`
-  - Adresse : `Food Truck Casino`
-  - Bouton **Nous contacter** vers Discord
-  - Ligne Discord supprimée.
-
-## Mise en ligne sur GitHub
-
-1. Ouvre ton dépôt GitHub `la-dispensa-di-rocco`.
-2. Remplace les anciens fichiers par ceux de cette version.
-3. Vérifie que le dossier `assets` contient bien `logo.png` et `carte.png`.
-4. Clique sur **Commit changes**.
-
-Cloudflare Pages redéploiera automatiquement le site si ton dépôt est déjà connecté.
+Remplace les fichiers de ton dépôt par ceux de ce ZIP, puis fais **Commit changes**.
+Cloudflare Pages redéploiera automatiquement si ton dépôt est déjà connecté.
