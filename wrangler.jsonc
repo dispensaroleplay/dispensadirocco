@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
 
-  "name": "TON-NOM-DE-PROJET-PAGES",
+  "name": "https://dispensadirocco.lucas-koehler67220.workers.dev",
   "pages_build_output_dir": ".",
   "compatibility_date": "2026-08-19",
 
