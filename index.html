@@ -34,7 +34,6 @@
       <a href="#histoire">Notre histoire</a>
       <a href="#carte">La carte</a>
       <a href="#galerie">Galerie</a>
-      <a href="#reservation">Réservation</a>
       <a href="#recrutement">Recrutement</a>
       <a class="nav-cta" href="#contact">Contact</a>
     </nav>
@@ -55,7 +54,7 @@
 
         <div class="hero-actions">
           <a class="button button-primary" href="#carte">Découvrir la carte</a>
-          <a class="button button-ghost" href="#reservation">Réserver une table</a>
+          <a class="button button-ghost" href="#carte">Commander</a>
         </div>
 
         <div class="italy-line" aria-hidden="true">
@@ -102,55 +101,25 @@
       </div>
     </section>
 
-    <section class="section dark-panel" id="carte">
+    <section class="section dark-panel menu-visual-section" id="carte">
       <div class="section-heading reveal">
         <div>
-          <p class="eyebrow">Selezione della casa</p>
+          <p class="eyebrow">La Dispensa Di Rocco</p>
           <h2>La carte</h2>
         </div>
         <p>
-          Une sélection de classiques italiens et de créations de la maison.
-          Les plats ci-dessous sont des exemples facilement modifiables.
+          Découvrez notre sélection street food italienne, faite maison.
         </p>
       </div>
 
-      <div class="menu-grid">
-        <article class="menu-card reveal">
-          <span class="menu-number">01</span>
-          <p class="menu-type">Antipasti</p>
-          <h3>Burrata Pugliese</h3>
-          <p>Tomates confites, basilic, huile d’olive vierge extra.</p>
-          <strong>18 $</strong>
-        </article>
-
-        <article class="menu-card reveal">
-          <span class="menu-number">02</span>
-          <p class="menu-type">Primi</p>
-          <h3>Tagliatelle al Ragù</h3>
-          <p>Pâtes fraîches, ragù mijoté, Parmigiano Reggiano.</p>
-          <strong>26 $</strong>
-        </article>
-
-        <article class="menu-card reveal">
-          <span class="menu-number">03</span>
-          <p class="menu-type">Secondi</p>
-          <h3>Pollo alla Parmigiana</h3>
-          <p>Escalope panée, sauce tomate, mozzarella, parmesan.</p>
-          <strong>29 $</strong>
-        </article>
-
-        <article class="menu-card reveal">
-          <span class="menu-number">04</span>
-          <p class="menu-type">Dolci</p>
-          <h3>Tiramisù della Casa</h3>
-          <p>Mascarpone, café, cacao et biscuit imbibé.</p>
-          <strong>12 $</strong>
-        </article>
+      <div class="menu-poster-wrap reveal">
+        <img class="menu-poster" src="assets/carte.png" alt="Carte La Dispensa Di Rocco" />
       </div>
 
-      <div class="menu-footer reveal">
-        <p>Tu pourras remplacer les plats, descriptions et prix quand tu veux.</p>
-        <a href="#contact">Demander la carte complète <span>→</span></a>
+      <div class="menu-order reveal">
+        <a class="button button-primary" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">
+          Commander
+        </a>
       </div>
     </section>
 
@@ -187,79 +156,7 @@
         </div>
       </div>
     </section>
-
-    <section class="section booking-section" id="reservation">
-      <div class="booking-copy reveal">
-        <p class="eyebrow">Prenotazione</p>
-        <h2>Réserver une table</h2>
-        <p>
-          Pour la V1, le formulaire fonctionne directement dans le navigateur :
-          il affiche une confirmation RP. On pourra ensuite le connecter à Discord
-          ou à une base de données.
-        </p>
-
-        <div class="booking-info">
-          <div>
-            <span>Horaires</span>
-            <strong>À personnaliser</strong>
-          </div>
-          <div>
-            <span>Localisation</span>
-            <strong>À personnaliser</strong>
-          </div>
-        </div>
-      </div>
-
-      <form class="booking-form reveal" id="booking-form">
-        <div class="form-row">
-          <label>
-            Nom
-            <input name="name" type="text" placeholder="Votre nom RP" required />
-          </label>
-          <label>
-            Téléphone
-            <input name="phone" type="text" placeholder="Numéro RP" required />
-          </label>
-        </div>
-
-        <div class="form-row">
-          <label>
-            Date
-            <input name="date" type="date" required />
-          </label>
-          <label>
-            Heure
-            <input name="time" type="time" required />
-          </label>
-        </div>
-
-        <label>
-          Nombre de personnes
-          <select name="guests" required>
-            <option value="">Choisir</option>
-            <option>1 personne</option>
-            <option>2 personnes</option>
-            <option>3 personnes</option>
-            <option>4 personnes</option>
-            <option>5 personnes</option>
-            <option>6+ personnes</option>
-          </select>
-        </label>
-
-        <label>
-          Note
-          <textarea name="note" rows="4" placeholder="Demande particulière..."></textarea>
-        </label>
-
-        <button class="button button-primary" type="submit">
-          Envoyer la réservation
-        </button>
-
-        <p class="form-message" id="form-message" role="status"></p>
-      </form>
-    </section>
-
-    <section class="section recruitment" id="recrutement">
+<section class="section recruitment" id="recrutement">
       <div class="recruitment-card reveal">
         <div>
           <p class="eyebrow">Lavora con noi</p>
@@ -269,7 +166,7 @@
             au sein de La Dispensa Di Rocco.
           </p>
         </div>
-        <a class="button button-ghost light" href="#contact">Candidater</a>
+        <a class="button button-ghost light" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Candidater</a>
       </div>
     </section>
 
@@ -281,21 +178,22 @@
 
       <div class="contact-main reveal">
         <p class="eyebrow">Parliamo</p>
-        <h2>Une question,<br>une réservation,<br>une candidature ?</h2>
+        <h2>Une question,<br>une commande,<br>une candidature ?</h2>
       </div>
 
       <div class="contact-list reveal">
         <div>
           <span>Téléphone RP</span>
-          <strong>À compléter</strong>
-        </div>
-        <div>
-          <span>Discord</span>
-          <strong>À compléter</strong>
+          <strong>(602)-056-5969</strong>
         </div>
         <div>
           <span>Adresse RP</span>
-          <strong>À compléter</strong>
+          <strong>Food Truck Casino</strong>
+        </div>
+        <div class="contact-action">
+          <a class="button button-primary" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">
+            Nous contacter
+          </a>
         </div>
       </div>
     </section>

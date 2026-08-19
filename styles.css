@@ -929,3 +929,58 @@ textarea {
     font-size: clamp(2.8rem, 14vw, 4.4rem);
   }
 }
+
+
+/* ================================
+   CARTE VISUELLE
+================================ */
+.menu-visual-section .section-heading {
+  margin-bottom: 34px;
+}
+
+.menu-poster-wrap {
+  max-width: 1500px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  background: #050505;
+  overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+}
+
+.menu-poster {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.menu-order {
+  display: flex;
+  justify-content: center;
+  margin-top: 34px;
+}
+
+.menu-order .button {
+  min-width: 220px;
+}
+
+.contact-action {
+  padding-top: 28px !important;
+  border-bottom: 0 !important;
+}
+
+.contact-action .button {
+  width: 100%;
+}
+
+@media (max-width: 850px) {
+  .menu-poster-wrap {
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+}
+
+@media (max-width: 560px) {
+  .menu-order .button {
+    width: 100%;
+  }
+}
