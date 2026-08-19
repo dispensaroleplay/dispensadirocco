@@ -193,12 +193,21 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // API publique utilisée par script.js.
+    // Force l'URL racine à servir explicitement la page d'accueil.
+    if (
+      request.method === "GET" &&
+      (url.pathname === "/" || url.pathname === "/index.html")
+    ) {
+      const indexUrl = new URL("/index.html", request.url);
+      return env.ASSETS.fetch(new Request(indexUrl, request));
+    }
+
+    // API de statut utilisée par le site.
     if (request.method === "GET" && url.pathname === "/api/status") {
       return getRestaurantStatus(env);
     }
 
-    // Webhook / interactions Discord.
+    // Endpoint des interactions Discord.
     if (
       request.method === "POST" &&
       url.pathname === "/discord/interactions"
@@ -206,18 +215,17 @@ export default {
       return handleDiscordInteraction(request, env);
     }
 
-    // Prevent other methods from accidentally hitting these routes.
     if (
       url.pathname === "/api/status" ||
       url.pathname === "/discord/interactions"
     ) {
       return new Response("Method Not Allowed", {
         status: 405,
-        headers: { Allow: "GET, POST" }
+        headers: { "Allow": "GET, POST" }
       });
     }
 
-    // Everything else is your normal Cloudflare Pages static site.
+    // Tous les autres fichiers statiques passent par le binding ASSETS.
     return env.ASSETS.fetch(request);
   }
 };
