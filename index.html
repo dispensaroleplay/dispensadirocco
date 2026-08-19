@@ -1,33 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#050505" />
-  <meta
-    name="description"
-    content="La Dispensa Di Rocco — Cucina Italiana. Restaurant italien RP."
-  />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080705">
+  <meta name="description" content="La Dispensa Di Rocco — street food italienne faite maison au Food Truck Casino.">
+
+  <meta property="og:title" content="La Dispensa Di Rocco">
+  <meta property="og:description" content="L’Italie dans la rue, l’excellence dans chaque bouchée.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/restaurant.webp">
+  <meta name="twitter:card" content="summary_large_image">
+
   <title>La Dispensa Di Rocco — Cucina Italiana</title>
 
+  <link rel="icon" href="assets/logo.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="page-noise" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
 
-  <header class="site-header" id="top">
+  <header class="header" id="top">
     <a class="brand" href="#top" aria-label="Accueil La Dispensa Di Rocco">
-      <img src="assets/logo.png" alt="Logo La Dispensa Di Rocco" />
+      <img src="assets/logo.webp" alt="" width="52" height="52">
       <span>La Dispensa Di Rocco</span>
     </a>
 
-    <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
-      <span></span>
-      <span></span>
+    <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false">
+      <span></span><span></span>
     </button>
 
     <nav class="nav" aria-label="Navigation principale">
@@ -35,175 +38,183 @@
       <a href="#carte">La carte</a>
       <a href="#galerie">Galerie</a>
       <a href="#recrutement">Recrutement</a>
-      <a class="nav-cta" href="#contact">Contact</a>
+      <a href="#contact">Contact</a>
+      <a class="admin-link" href="admin.html">ADMIN</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="hero-glow hero-glow-left" aria-hidden="true"></div>
-      <div class="hero-glow hero-glow-right" aria-hidden="true"></div>
+    <section class="hero" data-nav="top">
+      <div class="glow glow-green" aria-hidden="true"></div>
+      <div class="glow glow-red" aria-hidden="true"></div>
 
-      <div class="hero-content reveal">
-        <p class="eyebrow">Cucina Italiana • Tradizione • Eleganza</p>
-        <h1>L’Italie<br><em>à votre table.</em></h1>
+      <div class="hero-copy reveal">
+        <p class="eyebrow">Cucina Italiana · Street Food · Fatto in casa</p>
+        <h1>L’Italie<br><em>dans la rue.</em></h1>
         <p class="hero-text">
-          Une cuisine italienne généreuse, raffinée et inspirée des traditions.
-          Bienvenue à La Dispensa Di Rocco.
+          Des recettes généreuses, une identité élégante et le goût de l’Italie,
+          servis au cœur du Food Truck Casino.
         </p>
 
         <div class="hero-actions">
-          <a class="button button-primary" href="#carte">Découvrir la carte</a>
-          <a class="button button-ghost" href="#carte">Commander</a>
+          <a class="button button-gold" href="#carte">Découvrir la carte</a>
+          <a class="button button-outline" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Commander</a>
         </div>
 
-        <div class="italy-line" aria-hidden="true">
-          <span class="green"></span>
-          <span class="white"></span>
-          <span class="red"></span>
-        </div>
+        <div class="tricolore" aria-hidden="true"><span></span><span></span><span></span></div>
       </div>
 
-      <div class="hero-logo-wrap reveal">
-        <div class="logo-orbit"></div>
-        <img class="hero-logo" src="assets/logo.png" alt="La Dispensa Di Rocco" />
+      <div class="hero-visual reveal">
+        <div class="orbit" aria-hidden="true"></div>
+        <img src="assets/logo.webp" alt="Logo La Dispensa Di Rocco" width="720" height="720" fetchpriority="high">
       </div>
 
-      <a class="scroll-hint" href="#histoire" aria-label="Faire défiler">
-        <span></span>
-        Découvrir
-      </a>
+      <a class="scroll-hint" href="#histoire"><span></span>Découvrir</a>
     </section>
 
-    <section class="section section-split" id="histoire">
-      <div class="section-label reveal">
-        <span>01</span>
-        <p>Notre histoire</p>
-      </div>
+    <section class="section story" id="histoire" data-nav="histoire">
+      <div class="section-index reveal"><span>01</span><p>Notre histoire</p></div>
 
       <div class="story-copy reveal">
         <p class="eyebrow">La nostra filosofia</p>
-        <h2>Une cuisine sincère,<br>pensée comme en Italie.</h2>
+        <h2>Une cuisine italienne<br>qui vient à votre rencontre.</h2>
         <p>
-          La Dispensa Di Rocco célèbre la convivialité italienne autour de recettes
-          généreuses, de produits choisis avec soin et d’une atmosphère élégante.
+          La Dispensa Di Rocco est née d’une idée simple : faire sortir la cuisine
+          italienne des salles traditionnelles et l’amener au plus près de la ville.
+          Installée au Food Truck Casino, la maison mise sur une street food soignée,
+          généreuse et faite avec passion.
         </p>
         <p>
-          Chaque service est pensé comme un moment à partager : une belle assiette,
-          une table chaleureuse et le goût d’une cuisine qui respecte ses racines.
+          Ici, chaque service est pensé comme un vrai moment RP : accueillir,
+          conseiller, cuisiner et créer une adresse que les habitants reconnaissent
+          autant pour ses plats que pour son identité.
         </p>
       </div>
 
-      <div class="story-card reveal">
-        <div class="story-monogram">DR</div>
-        <p>“La simplicité est la sophistication suprême.”</p>
-        <span>— La Dispensa Di Rocco</span>
-      </div>
+      <aside class="quote-card reveal">
+        <span class="monogram">DR</span>
+        <p>« Fatto con passione,<br>servito con stile. »</p>
+        <small>La Dispensa Di Rocco</small>
+      </aside>
     </section>
 
-    <section class="section dark-panel menu-visual-section" id="carte">
-      <div class="section-heading reveal">
+    <section class="wide-section menu-section" id="carte" data-nav="carte">
+      <div class="section-head reveal">
         <div>
-          <p class="eyebrow">La Dispensa Di Rocco</p>
+          <p class="eyebrow">Street food italienne · Fait maison</p>
           <h2>La carte</h2>
         </div>
         <p>
-          Découvrez notre sélection street food italienne, faite maison.
+          Clique sur la carte pour l’ouvrir en plein écran, puis commande
+          directement via notre espace Discord.
         </p>
       </div>
 
-      <div class="menu-poster-wrap reveal">
-        <img class="menu-poster" src="assets/carte.png" alt="Carte La Dispensa Di Rocco" />
-      </div>
+      <button class="menu-poster reveal" id="menu-open" type="button" aria-label="Agrandir la carte">
+        <img src="assets/carte.webp" alt="Carte La Dispensa Di Rocco" loading="lazy" width="1672" height="941">
+        <span class="zoom-label">Agrandir la carte ↗</span>
+      </button>
 
-      <div class="menu-order reveal">
-        <a class="button button-primary" href="https://discord.com/channels/1529971523924791478/1529977191859879956" data-discord-link>
-          Commander
-        </a>
+      <div class="center reveal">
+        <a class="button button-gold" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Commander</a>
       </div>
     </section>
 
-    <section class="section gallery-section" id="galerie">
-      <div class="section-heading reveal">
+    <section class="section gallery" id="galerie" data-nav="galerie">
+      <div class="section-head reveal">
         <div>
           <p class="eyebrow">Atmosfera</p>
           <h2>L’expérience Dispensa</h2>
         </div>
         <p>
-          Découvrez l’univers de La Dispensa Di Rocco à travers notre emplacement
-          et quelques-unes de nos spécialités.
+          Notre emplacement et quelques-unes des spécialités servies
+          par La Dispensa Di Rocco.
         </p>
       </div>
 
-      <div class="gallery-grid gallery-grid-two">
-        <figure class="gallery-photo gallery-photo-restaurant reveal">
-          <img src="assets/restaurant.png" alt="La Dispensa Di Rocco au Food Truck Casino" />
-          <figcaption>
-            <span>01</span>
-            <p>Le restaurant</p>
-          </figcaption>
+      <div class="gallery-grid">
+        <figure class="photo reveal">
+          <img src="assets/restaurant.webp" alt="La Dispensa Di Rocco au Food Truck Casino" loading="lazy" width="1672" height="941">
+          <figcaption><span>01</span><p>Le restaurant</p></figcaption>
         </figure>
 
-        <figure class="gallery-photo gallery-photo-dish reveal">
-          <img src="assets/plat.png" alt="Plat de La Dispensa Di Rocco" />
-          <figcaption>
-            <span>02</span>
-            <p>Nos spécialités</p>
-          </figcaption>
+        <figure class="photo reveal">
+          <img src="assets/plat.webp" alt="Une spécialité de La Dispensa Di Rocco" loading="lazy" width="515" height="388">
+          <figcaption><span>02</span><p>Nos spécialités</p></figcaption>
         </figure>
       </div>
     </section>
-<section class="section recruitment" id="recrutement">
+
+    <section class="section information">
+      <div class="status-card reveal">
+        <div>
+          <p class="eyebrow">Informations RP</p>
+          <h2>Food Truck Casino</h2>
+        </div>
+
+        <div class="info-grid">
+          <div>
+            <span>Statut</span>
+            <strong class="status-badge" id="business-status">—</strong>
+          </div>
+          <div>
+            <span>Horaires</span>
+            <strong>Selon le service RP</strong>
+          </div>
+          <div>
+            <span>Téléphone</span>
+            <strong>(602)-056-5969</strong>
+          </div>
+        </div>
+
+        <a class="button button-outline" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Commander</a>
+      </div>
+    </section>
+
+    <section class="section recruitment" id="recrutement" data-nav="recrutement">
       <div class="recruitment-card reveal">
         <div>
           <p class="eyebrow">Lavora con noi</p>
           <h2>Rejoindre l’équipe</h2>
           <p>
-            Cuisine, service, accueil ou management : développe ton personnage
-            au sein de La Dispensa Di Rocco.
+            Cuisine, service, accueil ou management : rejoins La Dispensa Di Rocco
+            et développe ton personnage au sein d’une entreprise active.
           </p>
         </div>
-        <a class="button button-ghost light" href="https://discord.com/channels/1529971523924791478/1529977191859879956" data-discord-link>Candidater</a>
+
+        <a class="button button-outline" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Candidater</a>
       </div>
     </section>
 
-    <section class="section contact-section" id="contact">
-      <div class="section-label reveal">
-        <span>06</span>
-        <p>Contact</p>
-      </div>
+    <section class="section contact" id="contact" data-nav="contact">
+      <div class="section-index reveal"><span>05</span><p>Contact</p></div>
 
-      <div class="contact-main reveal">
+      <div class="contact-title reveal">
         <p class="eyebrow">Parliamo</p>
         <h2>Une question,<br>une commande,<br>une candidature ?</h2>
       </div>
 
       <div class="contact-list reveal">
-        <div>
-          <span>Téléphone RP</span>
-          <strong>(602)-056-5969</strong>
-        </div>
-        <div>
-          <span>Adresse RP</span>
-          <strong>Food Truck Casino</strong>
-        </div>
-        <div class="contact-action">
-          <a class="button button-primary" href="https://discord.com/channels/1529971523924791478/1529977191859879956" data-discord-link>
-            Nous contacter
-          </a>
-        </div>
+        <div><span>Téléphone RP</span><strong>(602)-056-5969</strong></div>
+        <div><span>Adresse RP</span><strong>Food Truck Casino</strong></div>
+        <a class="button button-gold" href="https://discord.com/channels/1529971523924791478/1529977191859879956" target="_blank" rel="noopener noreferrer">Nous contacter</a>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer class="footer">
     <div>
-      <img src="assets/logo.png" alt="" />
-      <p>La Dispensa Di Rocco</p>
+      <img src="assets/logo.webp" alt="" width="44" height="44">
+      <span>La Dispensa Di Rocco</span>
     </div>
     <p>© <span id="year"></span> La Dispensa Di Rocco — Site RP.</p>
     <a href="#top">Retour en haut ↑</a>
   </footer>
+
+  <div class="lightbox" id="menu-lightbox" aria-hidden="true" role="dialog" aria-label="Carte agrandie">
+    <button class="lightbox-close" id="menu-close" type="button" aria-label="Fermer la carte">×</button>
+    <img src="assets/carte.webp" alt="Carte La Dispensa Di Rocco en grand">
+  </div>
 
   <script src="script.js"></script>
 </body>

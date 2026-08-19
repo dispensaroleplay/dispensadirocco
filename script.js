@@ -1,94 +1,78 @@
-// ================================
-// LA DISPENSA DI ROCCO
-// Interactions principales
-// ================================
+// La Dispensa Di Rocco — V4
+const BUSINESS_OPEN = true; // Mets false quand le restaurant est fermé.
 
-const header = document.querySelector(".site-header");
+const body = document.body;
+const header = document.querySelector(".header");
 const menuToggle = document.querySelector(".menu-toggle");
-const navLinks = document.querySelectorAll(".nav a");
-const year = document.querySelector("#year");
+const navLinks = [...document.querySelectorAll(".nav a[href^='#']")];
+const statusBadge = document.querySelector("#business-status");
+const lightbox = document.querySelector("#menu-lightbox");
+const menuOpen = document.querySelector("#menu-open");
+const menuClose = document.querySelector("#menu-close");
 
-// Header compact au scroll
+document.querySelector("#year").textContent = new Date().getFullYear();
+
 window.addEventListener("scroll", () => {
-  header.classList.toggle("scrolled", window.scrollY > 40);
-});
+  header.classList.toggle("scrolled", window.scrollY > 35);
+}, { passive: true });
 
-// Menu mobile
 menuToggle.addEventListener("click", () => {
-  const isOpen = document.body.classList.toggle("menu-open");
-  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  const open = body.classList.toggle("menu-open");
+  menuToggle.setAttribute("aria-expanded", String(open));
 });
 
-navLinks.forEach((link) => {
+navLinks.forEach(link => {
   link.addEventListener("click", () => {
-    document.body.classList.remove("menu-open");
+    body.classList.remove("menu-open");
     menuToggle.setAttribute("aria-expanded", "false");
   });
 });
 
-// Animation d'apparition au scroll
-const revealObserver = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("visible");
-        revealObserver.unobserve(entry.target);
-      }
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("visible");
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: .12 });
+
+document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+const sectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const id = entry.target.id;
+    navLinks.forEach(link => {
+      link.classList.toggle("active", id && link.getAttribute("href") === `#${id}`);
     });
-  },
-  {
-    threshold: 0.12,
-  }
-);
+  });
+}, { rootMargin: "-35% 0px -55% 0px" });
 
-document.querySelectorAll(".reveal").forEach((element) => {
-  revealObserver.observe(element);
-});
+document.querySelectorAll("main section[id]").forEach(section => sectionObserver.observe(section));
 
+statusBadge.textContent = BUSINESS_OPEN ? "OUVERT" : "FERMÉ";
+statusBadge.classList.add(BUSINESS_OPEN ? "open" : "closed");
 
-
-// Ouverture Discord : tente l'application de bureau/mobile en priorité.
-// Si l'application ne répond pas, retour automatique vers la version web.
-const discordWebUrl =
-  "https://discord.com/channels/1529971523924791478/1529977191859879956";
-const discordAppUrl =
-  "discord://-/channels/1529971523924791478/1529977191859879956";
-
-function openDiscordApp(event) {
-  event.preventDefault();
-
-  let appLikelyOpened = false;
-
-  const markAsOpened = () => {
-    appLikelyOpened = true;
-  };
-
-  const visibilityHandler = () => {
-    if (document.visibilityState === "hidden") {
-      appLikelyOpened = true;
-    }
-  };
-
-  window.addEventListener("blur", markAsOpened, { once: true });
-  document.addEventListener("visibilitychange", visibilityHandler);
-
-  // Le clic utilisateur déclenche la tentative d'ouverture de l'application.
-  window.location.href = discordAppUrl;
-
-  // Si Discord n'est pas installé / le protocole est bloqué,
-  // on ouvre le salon dans le navigateur à la place.
-  window.setTimeout(() => {
-    document.removeEventListener("visibilitychange", visibilityHandler);
-
-    if (!appLikelyOpened && document.visibilityState === "visible") {
-      window.location.href = discordWebUrl;
-    }
-  }, 1400);
+function closeLightbox() {
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden", "true");
+  body.classList.remove("lightbox-open");
 }
 
-document.querySelectorAll("[data-discord-link]").forEach((link) => {
-  link.addEventListener("click", openDiscordApp);
+menuOpen.addEventListener("click", () => {
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+  body.classList.add("lightbox-open");
+  menuClose.focus();
 });
 
-// Année automatique
-year.textContent = new Date().getFullYear();
+menuClose.addEventListener("click", closeLightbox);
+
+lightbox.addEventListener("click", event => {
+  if (event.target === lightbox) closeLightbox();
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+});

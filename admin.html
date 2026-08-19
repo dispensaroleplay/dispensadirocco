@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080705">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ADMIN — La Dispensa Di Rocco</title>
+
+  <link rel="icon" href="assets/logo.webp" type="image/webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="admin-page">
+    <section class="admin-card">
+      <img src="assets/logo.webp" alt="La Dispensa Di Rocco">
+      <h1>Accès ADMIN</h1>
+      <p>Entre le mot de passe administrateur pour accéder à la gestion des stocks.</p>
+
+      <form class="admin-form" id="admin-form">
+        <label for="admin-password">Mot de passe</label>
+        <input id="admin-password" type="password" autocomplete="current-password" required autofocus>
+        <button class="button button-gold" type="submit">Se connecter</button>
+        <p class="admin-message" id="admin-message" role="status"></p>
+      </form>
+
+      <a class="admin-back" href="index.html">← Retour au site</a>
+    </section>
+  </main>
+
+  <script>
+    const EXPECTED_HASH = "69b14decf0fca2d6fe60d399c7ad0bb781b31e11bb2ca1fdd00a380e27772ea4";
+    const TARGET_URL = "https://stocks-ladispensadirocco.pages.dev";
+
+    async function sha256(value) {
+      const data = new TextEncoder().encode(value);
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      return [...new Uint8Array(digest)]
+        .map(byte => byte.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    document.querySelector("#admin-form").addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const input = document.querySelector("#admin-password");
+      const message = document.querySelector("#admin-message");
+      const hash = await sha256(input.value);
+
+      if (hash === EXPECTED_HASH) {
+        message.textContent = "";
+        window.location.href = TARGET_URL;
+        return;
+      }
+
+      input.value = "";
+      input.focus();
+      message.textContent = "Mot de passe incorrect.";
+    });
+  </script>
+</body>
+</html>
