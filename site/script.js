@@ -14,8 +14,6 @@ const zoomIn = document.querySelector("#zoom-in");
 const zoomOut = document.querySelector("#zoom-out");
 const zoomValue = document.querySelector("#zoom-value");
 
-const navStatus = document.querySelector("#nav-status");
-const navStatusText = document.querySelector("#nav-status-text");
 const businessStatus = document.querySelector("#business-status");
 const businessStatusText = document.querySelector("#business-status-text");
 
@@ -71,13 +69,10 @@ function paintStatus(status) {
   const open = status === "open";
   const closed = status === "closed";
 
-  [navStatus, businessStatus].forEach(element => {
-    element.classList.remove("status-loading", "status-open", "status-closed");
-    element.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
-  });
+  businessStatus.classList.remove("status-loading", "status-open", "status-closed");
+  businessStatus.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
 
   const label = open ? "OUVERT" : closed ? "FERMÉ" : "INDISPONIBLE";
-  navStatusText.textContent = label;
   businessStatusText.textContent = label;
 }
 
