@@ -1,20 +1,109 @@
-{
-  "$schema": "./node_modules/wrangler/config-schema.json",
+# La Dispensa Di Rocco — V5.2 Workers
 
-  "name": "https://dispensadirocco.lucas-koehler67220.workers.dev",
-  "pages_build_output_dir": ".",
-  "compatibility_date": "2026-08-19",
+Cette version est faite pour **Cloudflare Workers**, pas Cloudflare Pages.
 
-  "vars": {
-    "DISCORD_GUILD_ID": "1529971523924791478",
-    "DISCORD_CHANNEL_ID": "1537538848660390018",
-    "DISCORD_MESSAGE_ID": "1537545350313938954"
-  },
+## Déploiement
 
-  "kv_namespaces": [
-    {
-      "binding": "SITE_STATE",
-      "id": "0d17112d3f5949399ab3c72051b47338"
-    }
-  ]
-}
+La commande de déploiement est bien :
+
+```bash
+npx wrangler deploy
+```
+
+## Structure
+
+```text
+worker.js
+wrangler.jsonc
+public/
+  index.html
+  404.html
+  styles.css
+  script.js
+  assets/
+    logo.webp
+    carte.webp
+    restaurant.webp
+    plat.webp
+```
+
+`worker.js` gère les routes dynamiques :
+- `/api/status`
+- `/discord/interactions`
+
+Cloudflare sert directement les fichiers du dossier `public/`.
+
+## KV
+
+Crée un namespace Workers KV, puis remplace dans `wrangler.jsonc` :
+
+```text
+PUT_YOUR_KV_NAMESPACE_ID_HERE
+```
+
+par son vrai ID.
+
+Le binding s'appelle :
+
+```text
+SITE_STATE
+```
+
+et le Worker l'utilise sous :
+
+```js
+env.SITE_STATE
+```
+
+## Discord
+
+Les IDs non sensibles sont déjà dans `wrangler.jsonc` :
+
+```text
+DISCORD_GUILD_ID   = 1529971523924791478
+DISCORD_CHANNEL_ID = 1537538848660390018
+DISCORD_MESSAGE_ID = 1537545350313938954
+```
+
+Les boutons Discord doivent avoir les custom_id :
+
+```text
+restaurant_open
+restaurant_closed
+```
+
+## Secret
+
+Ajoute la Public Key Discord en secret Cloudflare :
+
+```bash
+npx wrangler secret put DISCORD_PUBLIC_KEY
+```
+
+ou dans le Dashboard du Worker via les Variables and Secrets.
+
+Ne mets pas la vraie valeur dans GitHub.
+
+## Endpoint Discord
+
+Dans le Discord Developer Portal de ton application :
+
+```text
+Interactions Endpoint URL
+```
+
+mets :
+
+```text
+https://TON-WORKER.workers.dev/discord/interactions
+```
+
+## ADMIN
+
+Le site principal continue d'envoyer ADMIN vers :
+
+```text
+https://stocks-ladispensadirocco.pages.dev
+```
+
+Pour une vraie protection, protège le site stocks séparément avec Cloudflare Access.

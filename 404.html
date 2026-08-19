@@ -1,201 +1,153 @@
-// La Dispensa Di Rocco — Cloudflare Pages Advanced Mode
-// IMPORTANT: on Cloudflare Pages, the correct filename is "_worker.js".
-//
-// This single Worker handles:
-// - GET  /api/status
-// - POST /discord/interactions
-// - all static site files through env.ASSETS
-//
-// Secrets are NOT stored in this file.
-// They are injected by Cloudflare through env.* bindings.
+// La Dispensa Di Rocco — V5
+const body = document.body;
+const header = document.querySelector(".header");
+const intro = document.querySelector("#intro");
+const menuToggle = document.querySelector(".menu-toggle");
+const navLinks = [...document.querySelectorAll(".nav a[href^='#']")];
 
-const OPEN_ID = "restaurant_open";
-const CLOSED_ID = "restaurant_closed";
+const lightbox = document.querySelector("#menu-lightbox");
+const menuOpen = document.querySelector("#menu-open");
+const menuClose = document.querySelector("#menu-close");
+const lightboxImage = document.querySelector("#lightbox-image");
+const viewport = document.querySelector("#lightbox-viewport");
+const zoomIn = document.querySelector("#zoom-in");
+const zoomOut = document.querySelector("#zoom-out");
+const zoomValue = document.querySelector("#zoom-value");
 
-function json(data, init = {}) {
-  return new Response(JSON.stringify(data), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      ...(init.headers || {})
+const navStatus = document.querySelector("#nav-status");
+const navStatusText = document.querySelector("#nav-status-text");
+const businessStatus = document.querySelector("#business-status");
+const businessStatusText = document.querySelector("#business-status-text");
+
+document.querySelector("#year").textContent = new Date().getFullYear();
+
+// Animation d'entrée courte.
+window.addEventListener("load", () => {
+  window.setTimeout(() => intro.classList.add("hidden"), 900);
+});
+
+window.addEventListener("scroll", () => {
+  header.classList.toggle("scrolled", window.scrollY > 35);
+}, { passive: true });
+
+menuToggle.addEventListener("click", () => {
+  const open = body.classList.toggle("menu-open");
+  menuToggle.setAttribute("aria-expanded", String(open));
+});
+
+navLinks.forEach(link => {
+  link.addEventListener("click", () => {
+    body.classList.remove("menu-open");
+    menuToggle.setAttribute("aria-expanded", "false");
+  });
+});
+
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("visible");
+      revealObserver.unobserve(entry.target);
     }
   });
+}, { threshold: .12 });
+
+document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+const sectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const id = entry.target.id;
+    navLinks.forEach(link => {
+      link.classList.toggle("active", id && link.getAttribute("href") === `#${id}`);
+    });
+  });
+}, { rootMargin: "-35% 0px -55% 0px" });
+
+document.querySelectorAll("main section[id]").forEach(section => sectionObserver.observe(section));
+
+// Statut OUVERT / FERMÉ synchronisé avec Cloudflare KV.
+// Le bouton Discord "OUVERTURE" écrit open, "FERMETURE" écrit closed.
+function paintStatus(status) {
+  const open = status === "open";
+  const closed = status === "closed";
+
+  [navStatus, businessStatus].forEach(element => {
+    element.classList.remove("status-loading", "status-open", "status-closed");
+    element.classList.add(open ? "status-open" : closed ? "status-closed" : "status-loading");
+  });
+
+  const label = open ? "OUVERT" : closed ? "FERMÉ" : "INDISPONIBLE";
+  navStatusText.textContent = label;
+  businessStatusText.textContent = label;
 }
 
-function hexToBytes(hex) {
-  if (!hex || hex.length % 2 !== 0) return new Uint8Array();
-
-  const pairs = hex.match(/../g);
-  if (!pairs) return new Uint8Array();
-
-  return new Uint8Array(
-    pairs.map(value => Number.parseInt(value, 16))
-  );
-}
-
-async function verifyDiscordRequest(request, rawBody, publicKeyHex) {
-  const signatureHex = request.headers.get("X-Signature-Ed25519");
-  const timestamp = request.headers.get("X-Signature-Timestamp");
-
-  if (!signatureHex || !timestamp || !publicKeyHex) {
-    return false;
-  }
-
+async function refreshStatus() {
   try {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      hexToBytes(publicKeyHex),
-      { name: "Ed25519" },
-      false,
-      ["verify"]
-    );
-
-    const message = new TextEncoder().encode(timestamp + rawBody);
-
-    return await crypto.subtle.verify(
-      { name: "Ed25519" },
-      key,
-      hexToBytes(signatureHex),
-      message
-    );
+    const response = await fetch("/api/status", { cache: "no-store" });
+    if (!response.ok) throw new Error("status api");
+    const data = await response.json();
+    paintStatus(data.status);
   } catch {
-    return false;
+    paintStatus("unknown");
   }
 }
 
-async function getRestaurantStatus(env) {
-  const status = await env.SITE_STATE.get("restaurant_status");
-  const updatedAt = await env.SITE_STATE.get("restaurant_status_updated_at");
+refreshStatus();
+window.setInterval(refreshStatus, 15000);
 
-  return json({
-    status: status === "open" || status === "closed" ? status : "unknown",
-    updatedAt: updatedAt || null
-  });
+// Carte plein écran + zoom.
+let zoom = 1;
+
+function applyZoom() {
+  const baseWidth = window.innerWidth <= 650 ? 1100 : Math.min(1500, window.innerWidth * .94);
+  lightboxImage.style.width = `${Math.round(baseWidth * zoom)}px`;
+  zoomValue.textContent = `${Math.round(zoom * 100)}%`;
 }
 
-async function handleDiscordInteraction(request, env) {
-  const rawBody = await request.text();
-
-  const valid = await verifyDiscordRequest(
-    request,
-    rawBody,
-    env.DISCORD_PUBLIC_KEY
-  );
-
-  if (!valid) {
-    return new Response("invalid request signature", { status: 401 });
-  }
-
-  let interaction;
-
-  try {
-    interaction = JSON.parse(rawBody);
-  } catch {
-    return new Response("invalid json", { status: 400 });
-  }
-
-  // Discord PING used when validating the Interactions Endpoint URL.
-  if (interaction.type === 1) {
-    return json({ type: 1 });
-  }
-
-  // Only accept button / message-component interactions.
-  if (interaction.type !== 3) {
-    return json({
-      type: 4,
-      data: {
-        content: "Interaction non prise en charge.",
-        flags: 64
-      }
-    });
-  }
-
-  // Lock interactions to the intended server/channel/message IDs.
-  const guildId = interaction.guild_id || "";
-  const channelId =
-    interaction.channel_id ||
-    interaction.channel?.id ||
-    "";
-  const messageId = interaction.message?.id || "";
-
-  if (
-    guildId !== env.DISCORD_GUILD_ID ||
-    channelId !== env.DISCORD_CHANNEL_ID ||
-    messageId !== env.DISCORD_MESSAGE_ID
-  ) {
-    return json({
-      type: 4,
-      data: {
-        content: "Ce bouton n'est pas autorisé à modifier le statut du site.",
-        flags: 64
-      }
-    });
-  }
-
-  const customId = interaction.data?.custom_id;
-  let status = null;
-
-  if (customId === OPEN_ID) status = "open";
-  if (customId === CLOSED_ID) status = "closed";
-
-  if (!status) {
-    return json({
-      type: 4,
-      data: {
-        content: "Bouton inconnu.",
-        flags: 64
-      }
-    });
-  }
-
-  await env.SITE_STATE.put("restaurant_status", status);
-  await env.SITE_STATE.put(
-    "restaurant_status_updated_at",
-    new Date().toISOString()
-  );
-
-  return json({
-    type: 4,
-    data: {
-      content:
-        status === "open"
-          ? "✅ Le site affiche maintenant **OUVERT**."
-          : "🔴 Le site affiche maintenant **FERMÉ**.",
-      flags: 64
-    }
-  });
+function openLightbox() {
+  zoom = 1;
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+  body.classList.add("lightbox-open");
+  applyZoom();
+  menuClose.focus();
 }
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
+function closeLightbox() {
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden", "true");
+  body.classList.remove("lightbox-open");
+}
 
-    // API publique utilisée par script.js.
-    if (request.method === "GET" && url.pathname === "/api/status") {
-      return getRestaurantStatus(env);
-    }
+menuOpen.addEventListener("click", openLightbox);
+menuClose.addEventListener("click", closeLightbox);
 
-    // Webhook / interactions Discord.
-    if (
-      request.method === "POST" &&
-      url.pathname === "/discord/interactions"
-    ) {
-      return handleDiscordInteraction(request, env);
-    }
+zoomIn.addEventListener("click", () => {
+  zoom = Math.min(2.2, zoom + .2);
+  applyZoom();
+});
 
-    // Prevent other methods from accidentally hitting these routes.
-    if (
-      url.pathname === "/api/status" ||
-      url.pathname === "/discord/interactions"
-    ) {
-      return new Response("Method Not Allowed", {
-        status: 405,
-        headers: { Allow: "GET, POST" }
-      });
-    }
+zoomOut.addEventListener("click", () => {
+  zoom = Math.max(.6, zoom - .2);
+  applyZoom();
+});
 
-    // Everything else is your normal Cloudflare Pages static site.
-    return env.ASSETS.fetch(request);
+lightbox.addEventListener("click", event => {
+  if (event.target === lightbox) closeLightbox();
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+  if (lightbox.classList.contains("open") && event.key === "+") {
+    zoom = Math.min(2.2, zoom + .2);
+    applyZoom();
   }
-};
+  if (lightbox.classList.contains("open") && event.key === "-") {
+    zoom = Math.max(.6, zoom - .2);
+    applyZoom();
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (lightbox.classList.contains("open")) applyZoom();
+});
