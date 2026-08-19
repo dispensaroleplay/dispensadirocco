@@ -131,7 +131,10 @@ window.setInterval(refreshStatus, 15000);
 let zoom = 1;
 
 function applyZoom() {
-  const baseWidth = window.innerWidth <= 650 ? 1100 : Math.min(1500, window.innerWidth * .94);
+  const isMobile = window.innerWidth <= 650;
+  const baseWidth = isMobile
+    ? Math.max(window.innerWidth - 28, 320)
+    : Math.min(1500, window.innerWidth * 0.94);
   lightboxImage.style.width = `${Math.round(baseWidth * zoom)}px`;
   zoomValue.textContent = `${Math.round(zoom * 100)}%`;
 }
