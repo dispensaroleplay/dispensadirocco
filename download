@@ -1,3 +1,24 @@
+# Server / configuration
+_worker.js
+worker.js
+wrangler.jsonc
+README.md
+SETUP-WORKERS.md
+dev-vars.example
+.gitignore
+.assetsignore
+
+# Old Cloudflare Pages setup
+functions/
+public/
+
+# Old archives / unused versions
+*.zip
+
+# Old PNG assets replaced by WebP
+assets/*.png
+
+# Local / secret files
 .dev.vars
 .dev.vars.*
 .env
