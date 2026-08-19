@@ -34,6 +34,23 @@ document.querySelectorAll(".discord-open").forEach(link => {
   link.addEventListener("click", openDiscord);
 });
 
+async function refreshAdminAccess() {
+  try {
+    const response = await fetch("/api/admin/access", { credentials: "same-origin" });
+    if (!response.ok) throw new Error("admin access");
+    const data = await response.json();
+    document.querySelectorAll(".admin-gated").forEach(link => {
+      link.hidden = !data.allowed;
+    });
+  } catch {
+    document.querySelectorAll(".admin-gated").forEach(link => {
+      link.hidden = true;
+    });
+  }
+}
+
+refreshAdminAccess();
+
 // Animation d'entrée courte.
 window.addEventListener("load", () => {
   window.setTimeout(() => intro.classList.add("hidden"), 900);
