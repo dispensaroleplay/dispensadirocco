@@ -58,3 +58,11 @@ Le mot de passe n'est pas écrit en clair dans `admin.html` : seul son hash SHA-
 Mais ce système n'est pas une vraie protection serveur. Une personne expérimentée peut contourner une protection côté navigateur, et l'URL de stocks reste directement accessible si quelqu'un la connaît.
 
 Pour une vraie restriction d'accès, il faudra protéger également le site de stocks côté Cloudflare (authentification serveur / Cloudflare Access / équivalent).
+
+
+## Correctif V4.1 — liens Discord
+
+Les boutons **Commander**, **Candidater** et **Nous contacter** ouvrent maintenant
+le lien Discord directement dans l'onglet courant (`target="_self"`).
+
+Cela évite les blocages éventuels liés à l'ouverture d'un nouvel onglet.
