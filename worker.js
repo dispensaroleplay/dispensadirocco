@@ -103,6 +103,31 @@ function getBootstrapAdmins(env) {
     .filter(Boolean);
 }
 
+function getBotRoleIds(env) {
+  const raw = env.DISCORD_BOT_ROLE_IDS || "";
+  return raw
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean);
+}
+
+function memberHasBotRole(interaction, env) {
+  const requiredRoles = getBotRoleIds(env);
+  if (!requiredRoles.length) return false;
+
+  const memberRoles = (interaction.member?.roles || []).map(String);
+  return requiredRoles.some(roleId => memberRoles.includes(String(roleId)));
+}
+
+async function canUseBotCommands(interaction, env) {
+  if (getBotRoleIds(env).length) {
+    return memberHasBotRole(interaction, env);
+  }
+
+  const actorId = getInteractionUserId(interaction);
+  return isAdminDiscordId(actorId, env);
+}
+
 async function readAdminAllowlist(env) {
   if (!env.SITE_STATE) return [];
 
@@ -452,9 +477,13 @@ async function handleAdminSlashCommand(interaction, env) {
     return discordEphemeral("Cette commande n'est pas autorisée ici.");
   }
 
-  const actorId = getInteractionUserId(interaction);
-  if (!(await isAdminDiscordId(actorId, env))) {
-    return discordEphemeral("Tu n'as pas la permission de gérer les accès admin.");
+  if (!(await canUseBotCommands(interaction, env))) {
+    const roleConfigured = getBotRoleIds(env).length > 0;
+    return discordEphemeral(
+      roleConfigured
+        ? "Tu n'as pas le rôle requis pour utiliser les commandes du bot."
+        : "Tu n'as pas la permission de gérer les accès admin."
+    );
   }
 
   const command = interaction.data?.name || "";
@@ -572,6 +601,15 @@ async function handleDiscordInteraction(request, env) {
     messageId !== env.DISCORD_MESSAGE_ID
   ) {
     return discordEphemeral("Ce bouton n'est pas autorisé à modifier le statut du site.");
+  }
+
+  if (!(await canUseBotCommands(interaction, env))) {
+    const roleConfigured = getBotRoleIds(env).length > 0;
+    return discordEphemeral(
+      roleConfigured
+        ? "Tu n'as pas le rôle requis pour modifier le statut du site."
+        : "Tu n'as pas la permission de modifier le statut du site."
+    );
   }
 
   const customId = interaction.data?.custom_id;

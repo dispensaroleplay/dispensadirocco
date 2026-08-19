@@ -155,6 +155,26 @@ Copie la **Public Key** de **ta app** → secret `ADMIN_DISCORD_PUBLIC_KEY`.
 
 - `ADMIN_DISCORD_IDS` : `606028135904968714` (ton ID bootstrap)
 - `ADMIN_REDIRECT_URL` : `https://stocks-ladispensadirocco.pages.dev`
+- `DISCORD_BOT_ROLE_IDS` : ID(s) du rôle Discord autorisé à utiliser les commandes et boutons (séparés par des virgules)
+
+### Restreindre les commandes bot par rôle Discord
+
+Par défaut (sans `DISCORD_BOT_ROLE_IDS`), seuls les admins du site (allowlist) peuvent utiliser `/admin-add`, `/admin-remove`, `/admin-list` et les boutons OUVERT / FERMÉ.
+
+Une fois `DISCORD_BOT_ROLE_IDS` configuré, **seuls les membres avec ce rôle** (ou l'un des rôles listés) peuvent :
+
+- utiliser les commandes slash admin
+- appuyer sur les boutons **OUVERT** / **FERMÉ**
+
+**Récupérer l'ID du rôle :**
+
+1. Discord → Paramètres → Avancés → **Mode développeur** (activé)
+2. Serveur RP → **Paramètres du serveur** → **Rôles** → clic droit sur le rôle → **Copier l'identifiant du rôle**
+3. Cloudflare → worker **dispensadirocco** → **Variables** → ajoute `DISCORD_BOT_ROLE_IDS` avec cet ID
+
+Exemple : `DISCORD_BOT_ROLE_IDS` = `1234567890123456789`
+
+Plusieurs rôles : `1234567890123456789,9876543210987654321`
 
 ### Gestion permanente
 

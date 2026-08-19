@@ -22,7 +22,8 @@
     "DISCORD_MESSAGE_ID": "1537545350313938954",
     "ADMIN_REDIRECT_URL": "https://stocks-ladispensadirocco.pages.dev",
     "ADMIN_STOCKS_ORIGIN": "https://stocks-ladispensadirocco.pages.dev",
-    "ADMIN_DISCORD_IDS": "606028135904968714"
+    "ADMIN_DISCORD_IDS": "606028135904968714",
+    "DISCORD_BOT_ROLE_IDS": "1530016795740868748"
   },
   "observability": {
     "enabled": true
