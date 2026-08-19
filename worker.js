@@ -3,7 +3,8 @@
 // Routes:
 // - GET  /api/status
 // - GET  /api/admin/access
-// - GET  /admin, /admin/login, /admin/callback
+// - POST /api/submit (admin session → proxy app stocks)
+// - GET  /admin, /admin/app, /admin/login, /admin/callback
 // - POST /discord/interactions
 // - static files via env.ASSETS (./site)
 
@@ -344,10 +345,81 @@ async function handleAdminCallback(request, env) {
   });
 }
 
+function getStocksOrigin(env) {
+  const raw = env.ADMIN_STOCKS_ORIGIN || env.ADMIN_REDIRECT_URL || "";
+  return raw.replace(/\/$/, "");
+}
+
+async function proxyStocksRequest(request, env, stocksPath) {
+  const origin = getStocksOrigin(env);
+  if (!origin) {
+    return new Response("ADMIN_STOCKS_ORIGIN is not configured", { status: 503 });
+  }
+
+  const targetUrl = new URL(stocksPath, `${origin}/`);
+  const headers = new Headers();
+
+  for (const name of ["accept", "accept-language", "content-type"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+
+  if (env.STOCKS_ACCESS_CLIENT_ID && env.STOCKS_ACCESS_CLIENT_SECRET) {
+    headers.set("CF-Access-Client-Id", env.STOCKS_ACCESS_CLIENT_ID);
+    headers.set("CF-Access-Client-Secret", env.STOCKS_ACCESS_CLIENT_SECRET);
+  }
+
+  const init = {
+    method: request.method,
+    headers,
+    redirect: "follow"
+  };
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = request.body;
+  }
+
+  const response = await fetch(targetUrl.toString(), init);
+  const outHeaders = new Headers(response.headers);
+  outHeaders.set("Cache-Control", "no-store");
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: outHeaders
+  });
+}
+
+async function requireAdminSession(request, env) {
+  const userId = await getSessionUserId(request, env);
+  if (!userId) {
+    return { error: redirect("/admin/login") };
+  }
+  return { userId };
+}
+
+async function handleAdminStocksApp(request, env) {
+  const auth = await requireAdminSession(request, env);
+  if (auth.error) return auth.error;
+
+  const prefix = "/admin/app";
+  const url = new URL(request.url);
+  let stocksPath = url.pathname.slice(prefix.length) || "/";
+
+  return proxyStocksRequest(request, env, stocksPath);
+}
+
+async function handleAdminSubmit(request, env) {
+  const auth = await requireAdminSession(request, env);
+  if (auth.error) return auth.error;
+
+  return proxyStocksRequest(request, env, "/api/submit");
+}
+
 async function handleAdminGate(request, env) {
   const userId = await getSessionUserId(request, env);
   if (userId) {
-    return redirect(env.ADMIN_REDIRECT_URL || "/");
+    return redirect("/admin/app");
   }
 
   return redirect("/admin/login");
@@ -555,6 +627,17 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/admin/logout") {
       return handleAdminLogout(request);
+    }
+
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      (url.pathname === "/admin/app" || url.pathname.startsWith("/admin/app/"))
+    ) {
+      return handleAdminStocksApp(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/submit") {
+      return handleAdminSubmit(request, env);
     }
 
     if (request.method === "GET" && url.pathname === "/admin") {

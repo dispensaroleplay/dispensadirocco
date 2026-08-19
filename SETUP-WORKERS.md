@@ -168,9 +168,113 @@ Liste stockée dans KV `SITE_STATE` → clé `admin_allowlist`.
 
 ### Flux utilisateur
 
-1. Admin autorisé : `/admin/login` ou clic ADMIN → connexion Discord
-2. Lien ADMIN visible + redirection vers stocks
+1. Admin autorisé : `/admin/login` → bouton ADMIN visible
+2. Clic ADMIN → `/admin/app` (formulaire stocks, session requise)
 3. Déconnexion : `/admin/logout`
 
-> L'URL directe de l'app stocks reste accessible sans protection supplémentaire (Cloudflare Access optionnel).
+### App stocks sécurisée
+
+L’app stocks n’est plus servie directement depuis le lien ADMIN. Flux :
+
+1. Connexion Discord (`/admin/login`)
+2. Clic **ADMIN** → `/admin/app` (proxy authentifié)
+3. Envoi du formulaire → `POST /api/submit` (session admin requise)
+
+Variables :
+
+- `ADMIN_STOCKS_ORIGIN` : origine Pages (`https://stocks-ladispensadirocco.pages.dev`)
+- `ADMIN_REDIRECT_URL` : conservé pour compatibilité (même URL)
+
+#### Bloquer l’URL Pages directe (recommandé)
+
+Sans ça, `stocks-ladispensadirocco.pages.dev` reste accessible en direct.
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Zero Trust** → **Access** → **Service auth** → **Create Service Token**
+2. **Access** → **Applications** → **Add** → Self-hosted → hostname `stocks-ladispensadirocco.pages.dev`
+3. Policy : **Service Auth** → token créé à l’étape 1 → **Action : Allow**
+4. Ajoute une 2ᵉ policy : **Everyone** → **Action : Block** (ou ne mets que Service Auth)
+5. Secrets Cloudflare sur le worker **dispensadirocco** :
+   - `STOCKS_ACCESS_CLIENT_ID`
+   - `STOCKS_ACCESS_CLIENT_SECRET`
+
+Le worker envoie ces headers au proxy ; les visiteurs sans token ne passent plus.
+
+## Domaine personnalisé
+
+Le site fonctionne aujourd’hui sur `https://dispensadirocco.<compte>.workers.dev`. Pour un domaine RP (ex. `ladispensadirocco.fr` ou `www.ladispensadirocco.fr`), le domaine doit être **géré par Cloudflare** (zone active sur ton compte).
+
+### Prérequis
+
+- Un nom de domaine acheté (OVH, Gandi, Cloudflare Registrar, etc.)
+- Le domaine **ajouté à Cloudflare** (DNS géré par Cloudflare — nameservers Cloudflare)
+
+### Étape 1 — Choisir l’URL
+
+| Option | Exemple | Usage |
+|--------|---------|--------|
+| Racine | `ladispensadirocco.fr` | URL courte, pro |
+| Sous-domaine | `www.ladispensadirocco.fr` | Si la racine sert à autre chose |
+
+Tu peux activer **les deux** (racine + `www`).
+
+### Étape 2 — Déclarer le domaine dans `wrangler.jsonc`
+
+Remplace `TON-DOMAINE.fr` par ton vrai domaine :
+
+```jsonc
+"routes": [
+  {
+    "pattern": "TON-DOMAINE.fr",
+    "custom_domain": true
+  },
+  {
+    "pattern": "www.TON-DOMAINE.fr",
+    "custom_domain": true
+  }
+],
+```
+
+Puis **commit + push** (ou `npx wrangler deploy`). Cloudflare crée automatiquement les enregistrements DNS et le certificat HTTPS.
+
+> Garde l’URL `workers.dev` active pendant la transition (ne mets pas `"workers_dev": false` tant que Discord n’est pas migré).
+
+### Étape 3 — Mettre à jour Discord (obligatoire)
+
+Dans **Admindispensa** → **OAuth2 → Redirects**, ajoute (sans supprimer l’ancienne URL tout de suite) :
+
+```text
+https://TON-DOMAINE.fr/admin/callback
+```
+
+Dans **Admindispensa** et **JadaOne** → **General Information → Interactions Endpoint URL** :
+
+```text
+https://TON-DOMAINE.fr/discord/interactions
+```
+
+*(Une seule URL par app — remplace l’URL `workers.dev` une fois le nouveau domaine validé.)*
+
+### Étape 4 — Vérifications
+
+1. `https://TON-DOMAINE.fr/` — page d’accueil
+2. `https://TON-DOMAINE.fr/api/status` — KV OK
+3. `https://TON-DOMAINE.fr/admin/login` — OAuth Discord
+4. Bouton OUVERT/FERMÉ sur Discord → statut mis à jour
+5. `/admin-list` fonctionne toujours
+
+### Étape 5 — Optionnel (app stocks)
+
+Tu peux aussi mettre un domaine custom sur l’app stocks (Pages) :
+
+- ex. `stocks.ladispensadirocco.fr` → Cloudflare Pages → Custom domains
+- puis mettre à jour `ADMIN_REDIRECT_URL` dans `wrangler.jsonc`
+
+### Dépannage
+
+| Problème | Solution |
+|----------|----------|
+| « Domain not found » au deploy | Le domaine n’est pas une zone Cloudflare sur ton compte |
+| OAuth Discord échoue | Redirect `/admin/callback` manquant pour le **nouveau** domaine |
+| Discord interactions invalides | Endpoint URL pas mis à jour sur la bonne app |
+| Certificat SSL en attente | Attendre 5–15 min après le premier deploy |
 ii
