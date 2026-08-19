@@ -19,6 +19,21 @@ const businessStatusText = document.querySelector("#business-status-text");
 
 document.querySelector("#year").textContent = new Date().getFullYear();
 
+const DISCORD_WEB = "https://discord.com/channels/1529971523924791478/1529977191859879956";
+const DISCORD_APP = "discord://discord.com/channels/1529971523924791478/1529977191859879956";
+
+function openDiscord(event) {
+  event.preventDefault();
+  window.location.href = DISCORD_APP;
+  window.setTimeout(() => {
+    window.open(DISCORD_WEB, "_blank", "noopener,noreferrer");
+  }, 700);
+}
+
+document.querySelectorAll(".discord-open").forEach(link => {
+  link.addEventListener("click", openDiscord);
+});
+
 // Animation d'entrée courte.
 window.addEventListener("load", () => {
   window.setTimeout(() => intro.classList.add("hidden"), 900);
