@@ -62,10 +62,15 @@ function hideIntro() {
   intro.classList.add("hidden");
 }
 
-window.setTimeout(hideIntro, 700);
-window.addEventListener("DOMContentLoaded", () => window.setTimeout(hideIntro, 450));
-window.addEventListener("load", () => window.setTimeout(hideIntro, 200));
-window.setTimeout(hideIntro, 1600);
+const isMobileViewport = window.matchMedia("(max-width: 980px)").matches;
+if (isMobileViewport) {
+  hideIntro();
+} else {
+  window.setTimeout(hideIntro, 700);
+  window.addEventListener("DOMContentLoaded", () => window.setTimeout(hideIntro, 450));
+  window.addEventListener("load", () => window.setTimeout(hideIntro, 200));
+  window.setTimeout(hideIntro, 1600);
+}
 
 window.addEventListener("scroll", () => {
   header?.classList.toggle("scrolled", window.scrollY > 35);
@@ -130,7 +135,11 @@ function applyZoom() {
 }
 
 function openLightbox() {
-  if (!lightbox) return;
+  if (!lightbox || !lightboxImage) return;
+  if (!lightboxImage.getAttribute("src")) {
+    const src = lightboxImage.getAttribute("data-src");
+    if (src) lightboxImage.src = src;
+  }
   zoom = 1;
   lightbox.classList.add("open");
   lightbox.setAttribute("aria-hidden", "false");

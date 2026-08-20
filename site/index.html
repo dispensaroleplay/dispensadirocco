@@ -17,9 +17,18 @@
   <title>La Dispensa Di Rocco — Cucina Italiana</title>
 
   <link rel="icon" href="assets/logo.webp" type="image/webp">
+  <link rel="preload" href="assets/logo.webp" as="image" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Montserrat:wght@400;500&display=swap"
+    media="print"
+    onload="this.media='all'"
+  >
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Montserrat:wght@400;500&display=swap">
+  </noscript>
   <link rel="stylesheet" href="styles.css">
   <noscript>
     <style>
@@ -88,7 +97,7 @@
 
       <div class="hero-visual reveal">
         <div class="orbit" aria-hidden="true"></div>
-        <img src="assets/logo.webp" alt="Logo La Dispensa Di Rocco" width="720" height="720" fetchpriority="high">
+        <img src="assets/logo.webp" alt="Logo La Dispensa Di Rocco" width="720" height="720" fetchpriority="high" decoding="async">
       </div>
 
       <a class="scroll-hint" href="#histoire"><span></span>Découvrir</a>
@@ -143,7 +152,7 @@
       </div>
 
       <button class="menu-poster reveal" id="menu-open" type="button" aria-label="Agrandir la carte">
-        <img src="assets/carte.webp" alt="Carte La Dispensa Di Rocco" loading="lazy" width="1672" height="941">
+        <img src="assets/carte-preview.webp" alt="Carte La Dispensa Di Rocco" loading="lazy" decoding="async" width="900" height="507">
         <span class="zoom-label">Agrandir la carte ↗</span>
       </button>
 
@@ -166,12 +175,12 @@
 
       <div class="gallery-grid">
         <figure class="photo reveal">
-          <img src="assets/restaurant.webp" alt="La Dispensa Di Rocco au Food Truck Casino" loading="lazy" width="1672" height="941">
+          <img src="assets/restaurant.webp" alt="La Dispensa Di Rocco au Food Truck Casino" loading="lazy" decoding="async" width="1100" height="619">
           <figcaption><span>01</span><p>Le restaurant</p></figcaption>
         </figure>
 
         <figure class="photo reveal">
-          <img src="assets/plat.webp" alt="Une spécialité de La Dispensa Di Rocco" loading="lazy" width="515" height="388">
+          <img src="assets/plat.webp" alt="Une spécialité de La Dispensa Di Rocco" loading="lazy" decoding="async" width="515" height="388">
           <figcaption><span>02</span><p>Nos spécialités</p></figcaption>
         </figure>
       </div>
@@ -274,10 +283,10 @@
     </div>
 
     <div class="lightbox-viewport" id="lightbox-viewport">
-      <img id="lightbox-image" src="assets/carte.webp" alt="Carte La Dispensa Di Rocco en grand">
+      <img id="lightbox-image" data-src="assets/carte.webp" alt="Carte La Dispensa Di Rocco en grand" decoding="async">
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js" defer></script>
 </body>
 </html>

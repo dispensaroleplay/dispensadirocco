@@ -1132,6 +1132,19 @@ button { font: inherit; }
   * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+/* Perf mobile : moins d’animations / overlays coûteux */
+@media (max-width: 980px) {
+  .intro { display: none; }
+
+  .ambient-lights { display: none; }
+
+  .glow,
+  .orbit,
+  .orbit::before { animation: none !important; }
+
+  .noise { opacity: .012; }
+}
+
 /* Responsive */
 @media (max-width: 1180px) {
   .brand span { display: none; }

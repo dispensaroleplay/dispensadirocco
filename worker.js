@@ -1848,7 +1848,10 @@ export default {
       (url.pathname === "/" || url.pathname === "/index.html")
     ) {
       const indexUrl = new URL("/index.html", request.url);
-      return env.ASSETS.fetch(new Request(indexUrl, request));
+      const page = await env.ASSETS.fetch(new Request(indexUrl, request));
+      const headers = new Headers(page.headers);
+      headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
+      return new Response(page.body, { status: page.status, headers });
     }
 
     if (request.method === "GET" && url.pathname === "/api/status") {
@@ -1913,7 +1916,7 @@ export default {
       });
     }
 
-    return env.ASSETS.fetch(request);
+    return withStaticAssetCache(await env.ASSETS.fetch(request));
   },
 
   async scheduled(event, env, ctx) {
