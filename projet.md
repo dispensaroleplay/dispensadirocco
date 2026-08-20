@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-20 (liste employés formulaire) |
+| **Dernière mise à jour** | 2026-08-20 (double écriture Sheets ajustement stock) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -99,7 +99,8 @@ Champs :
 3. Boutons **Valider** (vert) / **Refuser** (rouge)
 4. **Rien dans Sheets** tant que non validé
 5. **Valider** → append Google Sheets  
-   Colonnes : Date · Employé · Menus · Validé=`Oui` · Responsable=`BOT` · Preuve (lien Discord) · Commentaire=`Validé par {pseudo}`
+   - Onglet **Production** : Date · Employé · Menus · Validé=`Oui` · Responsable=`BOT` · Preuve · Commentaire=`Validé par {pseudo}`  
+   - Onglet **ajustements stock** (si `GOOGLE_STOCK_ADJUST_RANGE`) : Date · `Vente particuliers` · `Vente grossiste` · Quantité=`−menus` · `BOT` · `automatique`
 6. **Refuser** → pas d’écriture Sheets
 
 Aussi disponible : `POST /api/production` (token `PRODUCTION_API_TOKEN`) pour une source JSON externe.
@@ -130,9 +131,10 @@ Anti-doublon : même nom + stock &lt; 1 h.
 ### 3.7 Google Sheets
 
 - Compte de service (`GOOGLE_SERVICE_ACCOUNT_*`)
-- Range typique : `Production!A:G`
-- Lecture pour `/recap`, `/stats`, cron
-- Écriture uniquement après **Valider**
+- Range production : `GOOGLE_SHEETS_RANGE` (ex. `Production!A:G`)
+- Range ajustements stock : `GOOGLE_STOCK_ADJUST_RANGE` (ex. `Ajustements!A:F`) — même fichier par défaut, ou `GOOGLE_STOCK_ADJUST_SPREADSHEET_ID` si autre fichier
+- Lecture pour `/recap`, `/stats`, cron (onglet production)
+- Écriture uniquement après **Valider** (production + ajustement si configuré)
 
 ---
 
@@ -165,6 +167,7 @@ Voir le détail dans [`SETUP-WORKERS.md`](SETUP-WORKERS.md).
 - `PRODUCTION_DISCORD_CHANNEL_ID` — salon production (ID numérique)
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL` / `PRIVATE_KEY` / `SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_RANGE` — ex. `Production!A:G`
+- `GOOGLE_STOCK_ADJUST_RANGE` — ex. `Ajustements!A:F` (écriture double à la validation)
 - `PRODUCTION_API_TOKEN`
 - `ADMIN_SESSION_SECRET`, clés Discord OAuth / Public Keys
 

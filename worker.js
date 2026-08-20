@@ -949,12 +949,27 @@ function productionSheetRange(env) {
   return env.GOOGLE_SHEETS_RANGE || "Feuille1!A:G";
 }
 
-async function appendProductionSheetRow(env, row) {
-  const spreadsheetId = normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID);
-  const range = productionSheetRange(env);
+function stockAdjustSheetRange(env) {
+  return String(env.GOOGLE_STOCK_ADJUST_RANGE || "").trim();
+}
 
+function stockAdjustSpreadsheetId(env) {
+  return normalizeSpreadsheetId(
+    env.GOOGLE_STOCK_ADJUST_SPREADSHEET_ID || env.GOOGLE_SHEETS_SPREADSHEET_ID
+  );
+}
+
+/** Date au format de l’onglet ajustements : DD.MM.YYYY */
+function parisDateDots(date = new Date()) {
+  return parisDateString(date).replace(/\//g, ".");
+}
+
+async function appendGoogleSheetRow(env, spreadsheetId, range, row) {
   if (!spreadsheetId) {
-    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
+    throw new Error("Google Sheets spreadsheet ID is missing");
+  }
+  if (!range) {
+    throw new Error("Google Sheets range is missing");
   }
 
   const accessToken = await createGoogleAccessToken(env);
@@ -980,6 +995,45 @@ async function appendProductionSheetRow(env, row) {
   }
 
   return data;
+}
+
+async function appendProductionSheetRow(env, row) {
+  return appendGoogleSheetRow(
+    env,
+    normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID),
+    productionSheetRange(env),
+    row
+  );
+}
+
+/**
+ * Ligne onglet ajustements stock :
+ * Date | Vente particuliers | Vente grossiste | Quantité (−) | BOT | automatique
+ */
+function buildStockAdjustRow(stock, date = parisDateDots()) {
+  const qty = -Math.abs(Number(stock) || 0);
+  return [
+    date,
+    "Vente particuliers",
+    "Vente grossiste",
+    qty,
+    "BOT",
+    "automatique"
+  ];
+}
+
+async function appendStockAdjustSheetRow(env, stock, date) {
+  const range = stockAdjustSheetRange(env);
+  if (!range) {
+    return { skipped: true };
+  }
+
+  return appendGoogleSheetRow(
+    env,
+    stockAdjustSpreadsheetId(env),
+    range,
+    buildStockAdjustRow(stock, date || parisDateDots())
+  );
 }
 
 async function readProductionSheetRows(env) {
@@ -1492,6 +1546,23 @@ async function handleProductionValidateButton(interaction, env) {
       );
       return discordEphemeral(
         `❌ Impossible d'écrire dans Google Sheets : ${error?.message || "unknown"}`
+      );
+    }
+
+    try {
+      const adjust = await appendStockAdjustSheetRow(env, pending.stock);
+      if (adjust?.skipped) {
+        console.warn(
+          "[production] GOOGLE_STOCK_ADJUST_RANGE non défini — skip ajustement stock"
+        );
+      }
+    } catch (error) {
+      console.error("[production] stock adjust sheets error:", error?.message || error);
+      await postProductionAlert(
+        env,
+        `⚠️ **Production OK, ajustement stock échoué**\n` +
+          `**${pending.nom}** (${pending.stock})\n` +
+          `${error?.message || "unknown"}`
       );
     }
   }

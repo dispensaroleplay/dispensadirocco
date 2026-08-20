@@ -371,7 +371,25 @@ Flux : source → Worker → webhook Discord (`#production-whebooks`) → append
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Secret | Email du compte de service |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Secret | Clé privée PEM |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Secret / var | ID du fichier Sheets |
-| `GOOGLE_SHEETS_RANGE` | Var | Range append (défaut `Feuille1!A:G`) |
+| `GOOGLE_SHEETS_RANGE` | Var | Range append production (ex. `Production!A:G`) |
+| `GOOGLE_STOCK_ADJUST_RANGE` | Var | Range append ajustements stock (ex. `Ajustements!A:F`) |
+| `GOOGLE_STOCK_ADJUST_SPREADSHEET_ID` | Secret / var | Optionnel : autre fichier Sheets pour les ajustements |
+
+À chaque **Valider** Discord, le Worker écrit :
+
+1. Ligne **Production** (comme avant)
+2. Ligne **ajustement stock** si `GOOGLE_STOCK_ADJUST_RANGE` est défini :
+
+| Colonne | Valeur |
+|---------|--------|
+| Date | `DD.MM.YYYY` (Paris) |
+| Type d’ajustement | `Vente particuliers` |
+| Motif / référence | `Vente grossiste` |
+| Quantité (+ / −) | `−` stock produit |
+| Responsable | `BOT` |
+| Commentaire | `automatique` |
+
+Si l’onglet ajustements est dans **un autre** fichier Google, mets son ID dans `GOOGLE_STOCK_ADJUST_SPREADSHEET_ID` et partage-le avec le même compte de service.
 
 `DISCORD_GUILD_ID` est déjà dans `wrangler.jsonc`.
 
