@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-20 (peaufinage mobile admin) |
+| **Dernière mise à jour** | 2026-08-20 (fix menu mobile + chargement) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -198,6 +198,7 @@ node scripts/register-discord-commands.mjs
 - [x] Récap hebdo cron + rappel pending
 - [x] Mention rôle staff (si configuré)
 - [x] Peaufinage mobile du formulaire admin (`/admin/app`)
+- [x] Fix menu hamburger (zone tactile + couches) et chargement site (intro / reveal)
 
 ### À faire / idées prioritaires
 

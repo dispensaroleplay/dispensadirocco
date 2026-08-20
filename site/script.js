@@ -3,18 +3,19 @@ const body = document.body;
 const header = document.querySelector(".header");
 const intro = document.querySelector("#intro");
 const menuToggle = document.querySelector(".menu-toggle");
+const nav = document.querySelector(".nav");
 const navLinks = [...document.querySelectorAll(".nav a[href^='#']")];
 
 const lightbox = document.querySelector("#menu-lightbox");
 const menuOpen = document.querySelector("#menu-open");
 const menuClose = document.querySelector("#menu-close");
 const lightboxImage = document.querySelector("#lightbox-image");
-const viewport = document.querySelector("#lightbox-viewport");
 const zoomIn = document.querySelector("#zoom-in");
 const zoomOut = document.querySelector("#zoom-out");
 const zoomValue = document.querySelector("#zoom-value");
 
-document.querySelector("#year").textContent = new Date().getFullYear();
+const yearEl = document.querySelector("#year");
+if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
 const DISCORD_WEB = "https://discord.com/channels/1529971523924791478/1529977191859879956";
 const DISCORD_APP = "discord://discord.com/channels/1529971523924791478/1529977191859879956";
@@ -53,25 +54,36 @@ if (new URLSearchParams(location.search).get("admin") === "connected") {
   window.setTimeout(refreshAdminAccess, 100);
 }
 
-// Animation d'entrée courte.
-window.addEventListener("load", () => {
-  window.setTimeout(() => intro.classList.add("hidden"), 900);
-});
+// Intro : ne pas bloquer le site si des assets lents retardent `load`.
+let introHidden = false;
+function hideIntro() {
+  if (introHidden || !intro) return;
+  introHidden = true;
+  intro.classList.add("hidden");
+}
+
+window.setTimeout(hideIntro, 700);
+window.addEventListener("DOMContentLoaded", () => window.setTimeout(hideIntro, 450));
+window.addEventListener("load", () => window.setTimeout(hideIntro, 200));
+window.setTimeout(hideIntro, 1600);
 
 window.addEventListener("scroll", () => {
-  header.classList.toggle("scrolled", window.scrollY > 35);
+  header?.classList.toggle("scrolled", window.scrollY > 35);
 }, { passive: true });
 
-menuToggle?.addEventListener("click", () => {
-  const open = body.classList.toggle("menu-open");
-  menuToggle.setAttribute("aria-expanded", String(open));
+function setMenuOpen(open) {
+  body.classList.toggle("menu-open", open);
+  menuToggle?.setAttribute("aria-expanded", String(open));
+  menuToggle?.setAttribute("aria-label", open ? "Fermer le menu" : "Ouvrir le menu");
+}
+
+menuToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setMenuOpen(!body.classList.contains("menu-open"));
 });
 
-document.querySelector(".nav")?.addEventListener("click", event => {
-  if (event.target.closest("a")) {
-    body.classList.remove("menu-open");
-    menuToggle?.setAttribute("aria-expanded", "false");
-  }
+nav?.addEventListener("click", event => {
+  if (event.target.closest("a")) setMenuOpen(false);
 });
 
 const revealObserver = new IntersectionObserver(entries => {
@@ -81,9 +93,16 @@ const revealObserver = new IntersectionObserver(entries => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: .12 });
+}, { threshold: .08, rootMargin: "0px 0px -8% 0px" });
 
 document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+// Filet de sécurité : si l’observer rate (viewport / timing), afficher le contenu.
+window.setTimeout(() => {
+  document.querySelectorAll(".reveal:not(.visible)").forEach(el => {
+    el.classList.add("visible");
+  });
+}, 2200);
 
 const sectionObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => {
@@ -101,6 +120,7 @@ document.querySelectorAll("main section[id]").forEach(section => sectionObserver
 let zoom = 1;
 
 function applyZoom() {
+  if (!lightboxImage || !zoomValue) return;
   const isMobile = window.innerWidth <= 650;
   const baseWidth = isMobile
     ? Math.max(window.innerWidth - 28, 320)
@@ -110,49 +130,57 @@ function applyZoom() {
 }
 
 function openLightbox() {
+  if (!lightbox) return;
   zoom = 1;
   lightbox.classList.add("open");
   lightbox.setAttribute("aria-hidden", "false");
   body.classList.add("lightbox-open");
   applyZoom();
-  menuClose.focus();
+  menuClose?.focus();
 }
 
 function closeLightbox() {
+  if (!lightbox) return;
   lightbox.classList.remove("open");
   lightbox.setAttribute("aria-hidden", "true");
   body.classList.remove("lightbox-open");
 }
 
-menuOpen.addEventListener("click", openLightbox);
-menuClose.addEventListener("click", closeLightbox);
+menuOpen?.addEventListener("click", openLightbox);
+menuClose?.addEventListener("click", closeLightbox);
 
-zoomIn.addEventListener("click", () => {
+zoomIn?.addEventListener("click", () => {
   zoom = Math.min(2.2, zoom + .2);
   applyZoom();
 });
 
-zoomOut.addEventListener("click", () => {
+zoomOut?.addEventListener("click", () => {
   zoom = Math.max(.6, zoom - .2);
   applyZoom();
 });
 
-lightbox.addEventListener("click", event => {
+lightbox?.addEventListener("click", event => {
   if (event.target === lightbox) closeLightbox();
 });
 
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
-  if (lightbox.classList.contains("open") && event.key === "+") {
+  if (event.key === "Escape") {
+    if (lightbox?.classList.contains("open")) closeLightbox();
+    if (body.classList.contains("menu-open")) setMenuOpen(false);
+  }
+  if (lightbox?.classList.contains("open") && event.key === "+") {
     zoom = Math.min(2.2, zoom + .2);
     applyZoom();
   }
-  if (lightbox.classList.contains("open") && event.key === "-") {
+  if (lightbox?.classList.contains("open") && event.key === "-") {
     zoom = Math.max(.6, zoom - .2);
     applyZoom();
   }
 });
 
 window.addEventListener("resize", () => {
-  if (lightbox.classList.contains("open")) applyZoom();
+  if (lightbox?.classList.contains("open")) applyZoom();
+  if (window.innerWidth > 980 && body.classList.contains("menu-open")) {
+    setMenuOpen(false);
+  }
 });

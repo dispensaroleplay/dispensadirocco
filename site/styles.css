@@ -31,11 +31,7 @@ body.menu-open,
 body.lightbox-open { overflow: hidden; }
 
 body.menu-open .header {
-  z-index: 1100;
-}
-
-body.menu-open .noise {
-  z-index: 90;
+  z-index: 1200;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -46,7 +42,7 @@ button { font: inherit; }
   pointer-events: none;
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 2;
   opacity: .022;
   background-image: radial-gradient(#fff 0 1px, transparent 1px);
   background-size: 24px 24px;
@@ -100,7 +96,7 @@ button { font: inherit; }
 /* Navigation */
 .header {
   position: fixed;
-  z-index: 100;
+  z-index: 300;
   top: 0;
   left: 0;
   width: 100%;
@@ -240,34 +236,45 @@ button { font: inherit; }
 
 .menu-toggle {
   display: none;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: transparent;
   position: relative;
-  z-index: 120;
+  z-index: 320;
+  width: 52px;
+  height: 52px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
   cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-toggle:active {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .menu-toggle span {
   position: absolute;
-  left: 10px;
-  width: 24px;
-  height: 1px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
   background: #fff;
-  transition: .3s ease;
+  border-radius: 2px;
+  transition: transform .28s ease, top .28s ease, opacity .2s ease;
 }
 
-.menu-toggle span:first-child { top: 17px; }
-.menu-toggle span:last-child { top: 25px; }
+.menu-toggle span:first-child { top: 19px; }
+.menu-toggle span:last-child { top: 31px; }
 
 .menu-open .menu-toggle span:first-child {
-  transform: translateY(4px) rotate(45deg);
+  top: 25px;
+  transform: rotate(45deg);
 }
 
 .menu-open .menu-toggle span:last-child {
-  transform: translateY(-4px) rotate(-45deg);
+  top: 25px;
+  transform: rotate(-45deg);
 }
 
 /* Commun */
@@ -1145,34 +1152,46 @@ button { font: inherit; }
   .nav {
     position: fixed;
     inset: 0;
+    z-index: 310;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 19px;
+    gap: 8px;
     padding:
-      max(24px, env(safe-area-inset-top))
-      max(24px, env(safe-area-inset-right))
-      max(24px, env(safe-area-inset-bottom))
-      max(24px, env(safe-area-inset-left));
+      max(88px, calc(24px + env(safe-area-inset-top)))
+      max(28px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom))
+      max(28px, env(safe-area-inset-left));
     background: rgba(8, 7, 5, .985);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transform: translateY(-8px);
-    transition: .3s ease;
+    transform: translateY(-10px);
+    transition: opacity .28s ease, transform .28s ease, visibility .28s ease;
   }
 
   .menu-open .nav {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
     transform: none;
-    z-index: 110;
+  }
+
+  .menu-open .menu-toggle {
+    z-index: 330;
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
   }
 
   .nav > a:not(.status-pill):not(.admin-link) {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
     font-family: var(--serif);
-    font-size: 1.75rem;
+    font-size: clamp(1.55rem, 7vw, 1.9rem);
     text-transform: none;
     letter-spacing: 0;
+    padding: 8px 0;
   }
 
   .status-pill {
