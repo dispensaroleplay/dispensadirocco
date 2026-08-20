@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#080705" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Déclaration de production | La Dispensa Di Rocco</title>
     <link rel="icon" href="/assets/logo.webp" type="image/webp" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,13 +27,23 @@
         --red: #d6555f;
         --serif: "Cormorant Garamond", Georgia, serif;
         --sans: "Montserrat", Arial, sans-serif;
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
       }
 
       * { box-sizing: border-box; }
 
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         color: var(--text);
         background:
           radial-gradient(circle at 12% 8%, rgba(52, 181, 108, 0.12), transparent 28rem),
@@ -39,6 +51,8 @@
           radial-gradient(circle at 80% 90%, rgba(214, 85, 95, 0.1), transparent 24rem),
           var(--bg);
         font-family: var(--sans);
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
 
       .noise {
@@ -56,29 +70,34 @@
         z-index: 1;
         width: min(100% - 32px, 720px);
         margin: 0 auto;
-        padding: 34px 0 56px;
+        padding:
+          calc(28px + var(--safe-top))
+          max(0px, var(--safe-right))
+          calc(88px + var(--safe-bottom))
+          max(0px, var(--safe-left));
       }
 
       .topbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 28px;
+        gap: 12px;
+        margin-bottom: 24px;
       }
 
       .brand {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 12px;
         min-width: 0;
         color: inherit;
         text-decoration: none;
       }
 
       .brand img {
-        width: 52px;
-        height: 52px;
+        flex: 0 0 auto;
+        width: 48px;
+        height: 48px;
         object-fit: cover;
         border-radius: 50%;
         border: 1px solid rgba(255, 255, 255, 0.28);
@@ -86,31 +105,37 @@
 
       .brand span {
         overflow: hidden;
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         font-weight: 500;
-        letter-spacing: 0.18em;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       .top-link {
+        flex: 0 0 auto;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 4px;
         color: var(--gold-light);
-        font-size: 0.78rem;
+        font-size: 0.72rem;
         font-weight: 500;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         text-decoration: none;
         text-transform: uppercase;
       }
 
-      .top-link:hover { color: var(--gold); }
+      .top-link:hover,
+      .top-link:focus-visible { color: var(--gold); }
 
       .tricolore {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
         width: 100%;
         height: 4px;
-        margin-bottom: 22px;
+        margin-bottom: 20px;
         overflow: hidden;
         border-radius: 999px;
       }
@@ -120,7 +145,7 @@
       .tricolore span:nth-child(3) { background: var(--red); }
 
       .card {
-        padding: clamp(24px, 4vw, 38px);
+        padding: clamp(22px, 4vw, 38px);
         background: linear-gradient(180deg, rgba(18, 16, 12, 0.96), rgba(10, 9, 7, 0.98));
         border: 1px solid var(--line);
         border-radius: 22px;
@@ -128,9 +153,9 @@
       }
 
       .eyebrow {
-        margin: 0 0 12px;
+        margin: 0 0 10px;
         color: var(--gold-light);
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         font-weight: 500;
         letter-spacing: 0.16em;
         text-transform: uppercase;
@@ -139,10 +164,10 @@
       h1 {
         margin: 0 0 10px;
         font-family: var(--serif);
-        font-size: clamp(2.1rem, 5vw, 3rem);
+        font-size: clamp(1.85rem, 7vw, 3rem);
         font-weight: 500;
         letter-spacing: -0.03em;
-        line-height: 1.05;
+        line-height: 1.08;
       }
 
       h1 em {
@@ -152,21 +177,21 @@
       }
 
       .lead {
-        margin: 0 0 28px;
+        margin: 0 0 24px;
         max-width: 38ch;
         color: var(--muted);
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         font-weight: 300;
-        line-height: 1.65;
+        line-height: 1.6;
       }
 
-      .field { margin-bottom: 18px; }
+      .field { margin-bottom: 16px; }
 
       .field > label {
         display: block;
-        margin: 0 0 9px;
+        margin: 0 0 8px;
         color: var(--text);
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 500;
         letter-spacing: 0.04em;
       }
@@ -184,6 +209,7 @@
         border-radius: 12px;
         outline: none;
         font: inherit;
+        font-size: 16px; /* évite le zoom iOS au focus */
         transition: border-color 160ms ease, box-shadow 160ms ease;
       }
 
@@ -193,9 +219,20 @@
         box-shadow: 0 0 0 3px rgba(201, 150, 69, 0.12);
       }
 
+      input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        margin: 0;
+        -webkit-appearance: none;
+      }
+
       .upload {
         display: block;
-        padding: 22px 18px;
+        padding: 20px 16px;
         color: inherit;
         background: rgba(255, 255, 255, 0.025);
         border: 1px dashed rgba(201, 150, 69, 0.42);
@@ -205,7 +242,8 @@
         transition: background 160ms ease, border-color 160ms ease;
       }
 
-      .upload:hover {
+      .upload:hover,
+      .upload:focus-within {
         background: rgba(201, 150, 69, 0.06);
         border-color: rgba(201, 150, 69, 0.7);
       }
@@ -219,41 +257,101 @@
       }
 
       .upload small {
+        display: block;
         color: var(--muted);
         font-size: 0.78rem;
         font-weight: 300;
         line-height: 1.5;
       }
 
-      .upload input {
-        display: block;
-        width: min(100%, 320px);
-        margin: 16px auto 0;
-        color: var(--muted);
-        font-size: 0.82rem;
+      .upload-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .upload-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 12px;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      .upload-btn:active {
+        transform: scale(0.98);
+        background: rgba(201, 150, 69, 0.1);
+      }
+
+      .upload input[type="file"] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .preview {
         display: none;
-        grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
         gap: 10px;
         margin-top: 14px;
       }
 
       .preview.show { display: grid; }
 
-      .preview img {
-        width: 100%;
+      .preview-item {
+        position: relative;
         aspect-ratio: 1;
-        object-fit: cover;
+        overflow: hidden;
         border: 1px solid var(--line);
         border-radius: 12px;
+        background: rgba(0, 0, 0, 0.25);
+      }
+
+      .preview-item img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .preview-item button {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.62);
+        border: 0;
+        border-radius: 999px;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
       }
 
       .actions {
         display: flex;
         justify-content: flex-end;
-        margin-top: 26px;
+        margin-top: 22px;
       }
 
       button[type="submit"] {
@@ -285,20 +383,81 @@
 
       #form-status {
         min-height: 1.4em;
-        margin: 16px 0 0;
+        margin: 14px 0 0;
         color: var(--muted);
         font-size: 0.9rem;
         font-weight: 400;
+        line-height: 1.45;
+        word-break: break-word;
       }
 
       #form-status[data-state="error"] { color: var(--red); }
       #form-status[data-state="success"] { color: var(--green); }
 
-      @media (max-width: 560px) {
-        .brand span { max-width: 16ch; }
-        .card { padding: 22px 18px; }
-        .actions { justify-content: stretch; }
-        button[type="submit"] { width: 100%; }
+      .mobile-dock {
+        display: none;
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: min(100% - 24px, 720px);
+          padding-bottom: calc(108px + var(--safe-bottom));
+        }
+
+        .brand span { max-width: 14ch; }
+        .card {
+          padding: 20px 16px 18px;
+          border-radius: 18px;
+        }
+
+        .lead { margin-bottom: 20px; }
+
+        .upload-actions { grid-template-columns: 1fr 1fr; }
+
+        .actions {
+          display: none; /* remplacé par la barre sticky */
+        }
+
+        .mobile-dock {
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 20;
+          display: block;
+          padding:
+            12px
+            max(16px, var(--safe-right))
+            calc(12px + var(--safe-bottom))
+            max(16px, var(--safe-left));
+          background: linear-gradient(180deg, transparent, rgba(8, 7, 5, 0.92) 28%, rgba(8, 7, 5, 0.98));
+          backdrop-filter: blur(10px);
+        }
+
+        .mobile-dock button[type="submit"] {
+          width: 100%;
+          min-height: 54px;
+          border-radius: 14px;
+        }
+
+        .mobile-dock #form-status-mobile {
+          min-height: 0;
+          margin: 0 0 8px;
+          color: var(--muted);
+          font-size: 0.82rem;
+          text-align: center;
+          word-break: break-word;
+        }
+
+        .mobile-dock #form-status-mobile:empty { display: none; }
+        .mobile-dock #form-status-mobile[data-state="error"] { color: var(--red); }
+        .mobile-dock #form-status-mobile[data-state="success"] { color: var(--green); }
+
+        #form-status { display: none; }
+      }
+
+      @media (min-width: 641px) {
+        .page { padding-bottom: calc(56px + var(--safe-bottom)); }
       }
     </style>
   </head>
@@ -308,7 +467,7 @@
     <main class="page">
       <div class="topbar">
         <a class="brand" href="/">
-          <img src="/assets/logo.webp" alt="" width="52" height="52" />
+          <img src="/assets/logo.webp" alt="" width="48" height="48" />
           <span>La Dispensa Di Rocco</span>
         </a>
         <a class="top-link" href="/admin/logout">Déconnexion</a>
@@ -327,19 +486,40 @@
         <form id="production-form">
           <div class="field">
             <label for="name">Nom <span>*</span></label>
-            <input id="name" name="name" type="text" required autocomplete="name" />
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              autocomplete="name"
+              enterkeyhint="next"
+              autocapitalize="words"
+            />
           </div>
 
           <div class="field">
             <label for="stock">Stock produit <span>*</span></label>
-            <input id="stock" name="stock" type="number" min="0" step="1" required />
+            <input
+              id="stock"
+              name="stock"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              enterkeyhint="next"
+              required
+            />
           </div>
 
           <div class="field">
-            <label for="proof">Preuves photo <span>*</span></label>
-            <label class="upload" for="proof">
-              <strong id="upload-title">Choisir une ou plusieurs images</strong>
+            <label id="proof-label">Preuves photo <span>*</span></label>
+            <div class="upload" role="group" aria-labelledby="proof-label">
+              <strong id="upload-title">Ajouter des preuves</strong>
               <small>PNG, JPG, WEBP — max 10 fichiers, 8 Mo chacun</small>
+              <div class="upload-actions">
+                <button type="button" class="upload-btn" id="pick-gallery">Galerie</button>
+                <button type="button" class="upload-btn" id="pick-camera">Appareil photo</button>
+              </div>
               <input
                 id="proof"
                 name="proof"
@@ -347,8 +527,18 @@
                 accept="image/png,image/jpeg,image/jpg,image/webp,image/*"
                 multiple
                 required
+                tabindex="-1"
+                aria-hidden="true"
               />
-            </label>
+              <input
+                id="proof-camera"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                tabindex="-1"
+                aria-hidden="true"
+              />
+            </div>
             <div id="preview" class="preview" aria-live="polite"></div>
           </div>
 
@@ -362,39 +552,103 @@
       </section>
     </main>
 
+    <div class="mobile-dock" aria-hidden="false">
+      <p id="form-status-mobile" role="status"></p>
+      <button id="submit-button-mobile" type="submit" form="production-form">
+        <span id="submit-label-mobile">Envoyer la déclaration</span>
+      </button>
+    </div>
+
     <script>
       (() => {
         const form = document.getElementById("production-form");
         const proof = document.getElementById("proof");
+        const proofCamera = document.getElementById("proof-camera");
+        const pickGallery = document.getElementById("pick-gallery");
+        const pickCamera = document.getElementById("pick-camera");
         const title = document.getElementById("upload-title");
         const preview = document.getElementById("preview");
         const status = document.getElementById("form-status");
+        const statusMobile = document.getElementById("form-status-mobile");
         const button = document.getElementById("submit-button");
+        const buttonMobile = document.getElementById("submit-button-mobile");
         const label = document.getElementById("submit-label");
+        const labelMobile = document.getElementById("submit-label-mobile");
         const maxFiles = 10;
         const maxSize = 8 * 1024 * 1024;
+        /** @type {File[]} */
+        let selected = [];
+        /** @type {string[]} */
         let urls = [];
 
         const setStatus = (message, state = "") => {
           status.textContent = message;
           status.dataset.state = state;
+          statusMobile.textContent = message;
+          statusMobile.dataset.state = state;
         };
 
-        const clearPreview = () => {
+        const setBusy = (busy) => {
+          button.disabled = busy;
+          buttonMobile.disabled = busy;
+          const text = busy ? "Envoi…" : "Envoyer la déclaration";
+          label.textContent = text;
+          labelMobile.textContent = text;
+        };
+
+        const syncInputFiles = () => {
+          const dt = new DataTransfer();
+          for (const file of selected) dt.items.add(file);
+          proof.files = dt.files;
+        };
+
+        const renderPreview = () => {
           for (const url of urls) URL.revokeObjectURL(url);
           urls = [];
           preview.innerHTML = "";
-          preview.classList.remove("show");
-          title.textContent = "Choisir une ou plusieurs images";
+
+          if (!selected.length) {
+            preview.classList.remove("show");
+            title.textContent = "Ajouter des preuves";
+            syncInputFiles();
+            return;
+          }
+
+          title.textContent =
+            selected.length === 1
+              ? selected[0].name
+              : `${selected.length} images sélectionnées`;
+
+          selected.forEach((file, index) => {
+            const url = URL.createObjectURL(file);
+            urls.push(url);
+            const item = document.createElement("div");
+            item.className = "preview-item";
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = file.name;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.setAttribute("aria-label", `Retirer ${file.name}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => {
+              selected.splice(index, 1);
+              renderPreview();
+              setStatus("");
+            });
+            item.append(img, remove);
+            preview.appendChild(item);
+          });
+
+          preview.classList.add("show");
+          syncInputFiles();
         };
 
-        proof.addEventListener("change", () => {
-          const files = [...proof.files];
-          clearPreview();
+        const validateAndMerge = (incoming) => {
+          const files = [...incoming];
           if (!files.length) return;
 
-          if (files.length > maxFiles) {
-            proof.value = "";
+          if (selected.length + files.length > maxFiles) {
             setStatus("Maximum 10 images.", "error");
             return;
           }
@@ -404,50 +658,47 @@
               String(file.type || "").startsWith("image/") ||
               /\.(png|jpe?g|webp)$/i.test(file.name || "");
             if (!okType || file.size === 0 || file.size > maxSize) {
-              proof.value = "";
-              clearPreview();
               setStatus("Image invalide (PNG/JPG/WEBP, max 8 Mo).", "error");
               return;
             }
           }
 
-          title.textContent =
-            files.length === 1
-              ? files[0].name
-              : `${files.length} images sélectionnées`;
-
-          for (const file of files) {
-            const url = URL.createObjectURL(file);
-            urls.push(url);
-            const img = document.createElement("img");
-            img.src = url;
-            img.alt = file.name;
-            preview.appendChild(img);
-          }
-          preview.classList.add("show");
+          selected = selected.concat(files);
+          renderPreview();
           setStatus("");
+        };
+
+        pickGallery.addEventListener("click", () => proof.click());
+        pickCamera.addEventListener("click", () => proofCamera.click());
+
+        proof.addEventListener("change", () => {
+          validateAndMerge(proof.files);
+          proof.value = "";
+        });
+
+        proofCamera.addEventListener("change", () => {
+          validateAndMerge(proofCamera.files);
+          proofCamera.value = "";
         });
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           const name = form.elements.name.value.trim();
           const stock = form.elements.stock.value;
-          const files = [...proof.files];
 
-          if (!name || stock === "" || !files.length) {
+          if (!name || stock === "" || !selected.length) {
             setStatus("Remplis nom, stock et au moins une image.", "error");
             return;
           }
 
-          button.disabled = true;
-          label.textContent = "Envoi…";
+          setBusy(true);
           setStatus("Transmission en cours…");
 
           try {
             const body = new FormData();
             body.append("name", name);
             body.append("stock", stock);
-            for (const file of files) body.append("proof", file);
+            for (const file of selected) body.append("proof", file);
 
             const response = await fetch("/api/submit", {
               method: "POST",
@@ -460,13 +711,13 @@
             }
 
             form.reset();
-            clearPreview();
+            selected = [];
+            renderPreview();
             setStatus(data.message || "Déclaration envoyée.", "success");
           } catch (error) {
             setStatus(`Échec : ${error.message || "erreur"}`, "error");
           } finally {
-            button.disabled = false;
-            label.textContent = "Envoyer la déclaration";
+            setBusy(false);
           }
         });
       })();

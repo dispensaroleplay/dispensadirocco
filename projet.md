@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-20 |
+| **Dernière mise à jour** | 2026-08-20 (peaufinage mobile admin) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -89,7 +89,7 @@ Champs :
 
 - Nom
 - Stock produit
-- Une ou plusieurs images (max 10 × 8 Mo)
+- Une ou plusieurs images (max 10 × 8 Mo) — mobile : Galerie / Appareil photo, barre d’envoi sticky, safe-area
 
 **Flux :**
 
@@ -197,6 +197,7 @@ node scripts/register-discord-commands.mjs
 - [x] Alertes erreurs Discord
 - [x] Récap hebdo cron + rappel pending
 - [x] Mention rôle staff (si configuré)
+- [x] Peaufinage mobile du formulaire admin (`/admin/app`)
 
 ### À faire / idées prioritaires
 
@@ -205,7 +206,6 @@ node scripts/register-discord-commands.mjs
 - [ ] **Timeout auto** — après X jours : alerte forte ou refus / archivage
 - [ ] **Contrôle des noms** — warning si employé absent de la liste Sheets
 - [ ] **`/export`** — CSV de la période en pièce jointe Discord
-- [ ] **Peaufinage mobile** du formulaire admin
 - [ ] Domaine custom final + migration complète Discord endpoints (si pas déjà fait)
 
 ### Plus tard / nice-to-have
