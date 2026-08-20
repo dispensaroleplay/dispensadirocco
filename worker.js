@@ -772,14 +772,20 @@ async function createGoogleAccessToken(env) {
   return tokenData.access_token;
 }
 
-async function appendProductionSheetRow(env, row) {
-  let spreadsheetId = String(env.GOOGLE_SHEETS_SPREADSHEET_ID || "").trim();
-  const range = env.GOOGLE_SHEETS_RANGE || "Feuille1!A:G";
-
-  // Accepte une URL Sheets collée par erreur et n'en garde que l'ID.
+function normalizeSpreadsheetId(raw) {
+  let spreadsheetId = String(raw || "").trim();
   const fromUrl = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   if (fromUrl) spreadsheetId = fromUrl[1];
-  spreadsheetId = spreadsheetId.split("/")[0].split("?")[0];
+  return spreadsheetId.split("/")[0].split("?")[0];
+}
+
+function productionSheetRange(env) {
+  return env.GOOGLE_SHEETS_RANGE || "Feuille1!A:G";
+}
+
+async function appendProductionSheetRow(env, row) {
+  const spreadsheetId = normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  const range = productionSheetRange(env);
 
   if (!spreadsheetId) {
     throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
@@ -808,6 +814,230 @@ async function appendProductionSheetRow(env, row) {
   }
 
   return data;
+}
+
+async function readProductionSheetRows(env) {
+  const spreadsheetId = normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  const range = productionSheetRange(env);
+
+  if (!spreadsheetId) {
+    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
+  }
+
+  const accessToken = await createGoogleAccessToken(env);
+  const endpoint =
+    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}` +
+    `/values/${encodeURIComponent(range)}`;
+
+  const response = await fetch(endpoint, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `Sheets read failed (${response.status}): ${data.error?.message || "unknown"}`
+    );
+  }
+
+  return Array.isArray(data.values) ? data.values : [];
+}
+
+async function postDiscordWebhookContent(webhookUrl, content) {
+  if (!webhookUrl) return false;
+
+  const url = new URL(webhookUrl);
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    console.error(
+      "[production] Discord alert failed:",
+      response.status,
+      data.message || "unknown"
+    );
+    return false;
+  }
+
+  return true;
+}
+
+async function postProductionAlert(env, content) {
+  const primary = env.DISCORD_ALERT_WEBHOOK_URL || env.DISCORD_PRODUCTION_WEBHOOK_URL;
+  const ok = await postDiscordWebhookContent(primary, content);
+
+  if (
+    !ok &&
+    env.DISCORD_ALERT_WEBHOOK_URL &&
+    env.DISCORD_PRODUCTION_WEBHOOK_URL &&
+    env.DISCORD_ALERT_WEBHOOK_URL !== env.DISCORD_PRODUCTION_WEBHOOK_URL
+  ) {
+    await postDiscordWebhookContent(env.DISCORD_PRODUCTION_WEBHOOK_URL, content);
+  }
+}
+
+function parseSheetDate(value) {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!day || !month || !year) return null;
+
+  return { day, month, year, key: year * 10000 + month * 100 + day };
+}
+
+function parisYmdParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Paris",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).formatToParts(date);
+
+  const day = Number(parts.find(part => part.type === "day")?.value);
+  const month = Number(parts.find(part => part.type === "month")?.value);
+  const year = Number(parts.find(part => part.type === "year")?.value);
+  return { day, month, year, key: year * 10000 + month * 100 + day };
+}
+
+function addDaysToYmd(ymd, deltaDays) {
+  const utc = Date.UTC(ymd.year, ymd.month - 1, ymd.day + deltaDays);
+  const date = new Date(utc);
+  return {
+    day: date.getUTCDate(),
+    month: date.getUTCMonth() + 1,
+    year: date.getUTCFullYear(),
+    key:
+      date.getUTCFullYear() * 10000 +
+      (date.getUTCMonth() + 1) * 100 +
+      date.getUTCDate()
+  };
+}
+
+function formatYmd(ymd) {
+  return `${String(ymd.day).padStart(2, "0")}/${String(ymd.month).padStart(2, "0")}/${ymd.year}`;
+}
+
+function previousIsoWeekRangeParis(now = new Date()) {
+  const today = parisYmdParts(now);
+  const weekdayName = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    weekday: "short"
+  }).format(now);
+
+  const weekdayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const weekday = weekdayMap[weekdayName] || 1;
+  const daysSinceMonday = weekday - 1;
+  const thisMonday = addDaysToYmd(today, -daysSinceMonday);
+  const prevMonday = addDaysToYmd(thisMonday, -7);
+  const prevSunday = addDaysToYmd(thisMonday, -1);
+
+  return { start: prevMonday, end: prevSunday };
+}
+
+function buildWeeklyProductionRecap(rows, range) {
+  const totals = new Map();
+  let entries = 0;
+  let menusTotal = 0;
+
+  for (const row of rows) {
+    const date = parseSheetDate(row[0]);
+    if (!date) continue;
+    if (date.key < range.start.key || date.key > range.end.key) continue;
+
+    const employe = String(row[1] || "").trim();
+    const menus = Number(String(row[2] || "").replace(/\s/g, "").replace(",", "."));
+    if (!employe || !Number.isFinite(menus)) continue;
+
+    entries += 1;
+    menusTotal += menus;
+    totals.set(employe, (totals.get(employe) || 0) + menus);
+  }
+
+  const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"));
+
+  return { entries, menusTotal, ranked };
+}
+
+function formatWeeklyRecapMessage(range, summary) {
+  const period = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
+
+  if (!summary.ranked.length) {
+    return (
+      `📊 **Récap production hebdo** (${period})\n` +
+      `Aucune déclaration trouvée sur la période.`
+    );
+  }
+
+  const lines = summary.ranked.map(
+    ([name, total], index) => `${index + 1}. **${name}** — ${Math.round(total)} menus`
+  );
+
+  return (
+    `📊 **Récap production hebdo** (${period})\n` +
+    `Déclarations : **${summary.entries}** · Menus : **${Math.round(summary.menusTotal)}**\n\n` +
+    lines.join("\n")
+  );
+}
+
+async function runWeeklyProductionRecap(env) {
+  const range = previousIsoWeekRangeParis();
+  const rows = await readProductionSheetRows(env);
+  const summary = buildWeeklyProductionRecap(rows, range);
+  const content = formatWeeklyRecapMessage(range, summary);
+
+  const webhook =
+    env.DISCORD_RECAP_WEBHOOK_URL ||
+    env.DISCORD_ALERT_WEBHOOK_URL ||
+    env.DISCORD_PRODUCTION_WEBHOOK_URL;
+
+  const posted = await postDiscordWebhookContent(webhook, content);
+  if (!posted) {
+    throw new Error("Impossible de poster le récap Discord");
+  }
+
+  console.log("[production] weekly recap posted", content);
+  return { ok: true, range, summary, content };
+}
+
+async function handleProductionRecap(request, env) {
+  if (!env.PRODUCTION_API_TOKEN) {
+    return json(
+      { ok: false, error: "PRODUCTION_API_TOKEN is not configured" },
+      { status: 503 }
+    );
+  }
+
+  const providedToken = readProductionToken(request);
+  if (!providedToken || providedToken !== env.PRODUCTION_API_TOKEN) {
+    return json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const result = await runWeeklyProductionRecap(env);
+    return json(result);
+  } catch (error) {
+    console.error("[production] recap error:", error?.message || error);
+    await postProductionAlert(
+      env,
+      `❌ **Alerte récap hebdo**\nImpossible de générer/poster le récap : ${error?.message || "unknown"}`
+    );
+    return json(
+      {
+        ok: false,
+        error: `Impossible de générer le récap (${error?.message || "unknown"}).`
+      },
+      { status: 502 }
+    );
+  }
 }
 
 async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
@@ -911,6 +1141,12 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
     discord = await postProductionDiscordMessage(env, nom, stock, proofFile);
   } catch (error) {
     console.error("[production] Discord error:", error?.message || error);
+    await postProductionAlert(
+      env,
+      `❌ **Alerte production Discord**\n` +
+        `Impossible de poster la déclaration **${nom}** (${stock} menus).\n` +
+        `Erreur : ${error?.message || "unknown"}`
+    );
     return json(
       {
         ok: false,
@@ -934,6 +1170,13 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
     await appendProductionSheetRow(env, sheetRow);
   } catch (error) {
     console.error("[production] Sheets error:", error?.message || error);
+    await postProductionAlert(
+      env,
+      `❌ **Alerte Google Sheets**\n` +
+        `Discord OK pour **${nom}** (${stock} menus) mais l'écriture Sheets a échoué.\n` +
+        `Preuve : ${discord.discordUrl}\n` +
+        `Erreur : ${error?.message || "unknown"}`
+    );
     return json(
       {
         ok: false,
@@ -1065,6 +1308,10 @@ export default {
       return handleProductionDeclaration(request, env);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/production/recap") {
+      return handleProductionRecap(request, env);
+    }
+
     if (request.method === "GET" && url.pathname === "/admin") {
       return handleAdminGate(request, env);
     }
@@ -1088,5 +1335,21 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          await runWeeklyProductionRecap(env);
+        } catch (error) {
+          console.error("[production] scheduled recap error:", error?.message || error);
+          await postProductionAlert(
+            env,
+            `❌ **Alerte récap hebdo (cron)**\n${error?.message || "unknown"}`
+          );
+        }
+      })()
+    );
   }
 };

@@ -394,3 +394,33 @@ Le formulaire sur `https://dispensadirocco.ladispensadirocco.workers.dev/admin/a
 - `proof` (image)
 
 Le Worker enregistre alors Discord + Google Sheets (plus besoin du webhook Discord côté app Pages).
+
+### Alertes Discord
+
+Si Discord ou Google Sheets échoue à l’enregistrement, le Worker poste une alerte :
+
+- webhook utilisé : `DISCORD_ALERT_WEBHOOK_URL` si défini, sinon `DISCORD_PRODUCTION_WEBHOOK_URL`
+- contenu : nom, stock, lien preuve (si dispo), message d’erreur
+
+### Récap hebdomadaire
+
+Chaque **lundi à 06:00 UTC** (~08:00 Europe/Paris en hiver, ~07:00 en été), le Worker :
+
+1. lit l’onglet Sheets
+2. agrège la **semaine précédente** (lundi → dimanche, fuseau Paris)
+3. poste un récap Discord (totaux par employé)
+
+Webhook récap : `DISCORD_RECAP_WEBHOOK_URL` → sinon alerte → sinon production.
+
+Déclenchement manuel (même token que `/api/production`) :
+
+```powershell
+Invoke-RestMethod -Method POST `
+  -Uri "https://dispensadirocco.ladispensadirocco.workers.dev/api/production/recap" `
+  -Headers @{ Authorization = "Bearer TON_PRODUCTION_API_TOKEN" }
+```
+
+| Nom | Type | Rôle |
+|-----|------|------|
+| `DISCORD_ALERT_WEBHOOK_URL` | Secret (optionnel) | Salon staff pour les erreurs |
+| `DISCORD_RECAP_WEBHOOK_URL` | Secret (optionnel) | Salon pour le récap hebdo |
