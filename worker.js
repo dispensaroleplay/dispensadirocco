@@ -440,13 +440,19 @@ async function handleAdminStocksApp(request, env) {
   // Multi-images : on sert notre app.js à la place de celui de Pages.
   if (stocksPath === "/app.js") {
     const assetUrl = new URL("/admin-app.js", request.url);
-    const asset = await env.ASSETS.fetch(new Request(assetUrl, request));
-    const headers = new Headers(asset.headers);
-    headers.set("Cache-Control", "no-store");
-    return new Response(asset.body, {
-      status: asset.status,
-      statusText: asset.statusText,
-      headers
+    const asset = await env.ASSETS.fetch(new Request(assetUrl));
+    if (!asset.ok) {
+      return new Response("// admin-app.js missing from assets\n", {
+        status: 500,
+        headers: { "Content-Type": "application/javascript; charset=utf-8" }
+      });
+    }
+    return new Response(await asset.text(), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/javascript; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 
@@ -461,8 +467,19 @@ async function handleAdminStocksApp(request, env) {
   html = html
     .replace(
       /(<input[^>]*\bid="proof"[^>]*)(\/?>)/i,
-      (match, start, end) =>
-        /\bmultiple\b/i.test(start) ? match : `${start} multiple${end}`
+      (match, start, end) => {
+        let next = start;
+        if (!/\bmultiple\b/i.test(next)) next += " multiple";
+        if (/accept=/i.test(next)) {
+          next = next.replace(
+            /accept=["'][^"']*["']/i,
+            'accept="image/png,image/jpeg,image/jpg,image/webp,image/*"'
+          );
+        } else {
+          next += ' accept="image/png,image/jpeg,image/jpg,image/webp,image/*"';
+        }
+        return `${next}${end}`;
+      }
     )
     .replace(
       />Ajouter une image</gi,
@@ -1851,7 +1868,8 @@ export default {
 
     if (
       url.pathname.startsWith("/api/") ||
-      url.pathname.startsWith("/admin") ||
+      url.pathname === "/admin" ||
+      url.pathname.startsWith("/admin/") ||
       url.pathname === "/discord/interactions"
     ) {
       return new Response("Method Not Allowed", {

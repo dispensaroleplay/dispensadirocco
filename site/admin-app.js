@@ -7,14 +7,18 @@
   const status = document.getElementById("form-status");
   const submitButton = document.getElementById("submit-button");
   const submitLabel = document.getElementById("submit-label");
+
+  if (!form || !uploadZone || !proofInput || !status || !submitButton) {
+    console.error("[admin-app] éléments du formulaire introuvables");
+    return;
+  }
+
   const maxFileSize = 8 * 1024 * 1024;
   const maxFiles = 10;
-  const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
   let previewUrls = [];
 
-  if (proofInput) {
-    proofInput.setAttribute("multiple", "multiple");
-  }
+  proofInput.multiple = true;
+  proofInput.accept = "image/png,image/jpeg,image/jpg,image/webp,image/*";
 
   const setStatus = (message, state = "") => {
     status.textContent = message;
@@ -28,13 +32,19 @@
 
   const resetPreview = () => {
     clearPreviewUrls();
-    previewImage.removeAttribute("src");
+    if (previewImage) previewImage.removeAttribute("src");
     uploadZone.classList.remove("has-file");
-    uploadTitle.textContent = "Ajouter une ou plusieurs images";
+    if (uploadTitle) uploadTitle.textContent = "Ajouter une ou plusieurs images";
+  };
+
+  const isAllowedImage = (file) => {
+    const type = String(file.type || "").toLowerCase();
+    if (type.startsWith("image/")) return true;
+    return /\.(png|jpe?g|webp)$/i.test(file.name || "");
   };
 
   const collectValidFiles = (fileList) => {
-    const files = [...fileList].filter(Boolean);
+    const files = [...(fileList || [])].filter(Boolean);
     if (!files.length) return [];
 
     if (files.length > maxFiles) {
@@ -43,7 +53,7 @@
     }
 
     for (const file of files) {
-      if (!allowedTypes.includes(file.type)) {
+      if (!isAllowedImage(file)) {
         setStatus("Formats acceptés : PNG, JPEG ou WEBP.", "error");
         return null;
       }
@@ -57,26 +67,38 @@
   };
 
   const updateFiles = (fileList) => {
-    resetPreview();
     const files = collectValidFiles(fileList);
     if (files === null) {
       proofInput.value = "";
+      resetPreview();
       return;
     }
+
+    resetPreview();
     if (!files.length) return;
 
-    const firstUrl = URL.createObjectURL(files[0]);
-    previewUrls = [firstUrl];
-    previewImage.src = firstUrl;
-    uploadTitle.textContent =
-      files.length === 1
-        ? files[0].name
-        : `${files.length} images sélectionnées`;
+    if (previewImage) {
+      const firstUrl = URL.createObjectURL(files[0]);
+      previewUrls = [firstUrl];
+      previewImage.src = firstUrl;
+    }
+
+    if (uploadTitle) {
+      uploadTitle.textContent =
+        files.length === 1
+          ? files[0].name
+          : `${files.length} images sélectionnées`;
+    }
     uploadZone.classList.add("has-file");
     setStatus("");
   };
 
-  uploadZone.addEventListener("click", () => proofInput.click());
+  uploadZone.addEventListener("click", (event) => {
+    if (event.target === proofInput) return;
+    event.preventDefault();
+    proofInput.click();
+  });
+
   uploadZone.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -101,10 +123,10 @@
   });
 
   uploadZone.addEventListener("drop", (event) => {
-    const files = [...event.dataTransfer.files];
-    if (!files.length) return;
+    const dropped = [...(event.dataTransfer?.files || [])];
+    if (!dropped.length) return;
     const transfer = new DataTransfer();
-    for (const file of files.slice(0, maxFiles)) transfer.items.add(file);
+    for (const file of dropped.slice(0, maxFiles)) transfer.items.add(file);
     proofInput.files = transfer.files;
     updateFiles(proofInput.files);
   });
@@ -114,9 +136,6 @@
     const name = form.elements.name.value.trim();
     const stock = form.elements.stock.value;
     const proofs = [...(proofInput.files || [])];
-    const turnstileToken = form
-      .querySelector('[name="cf-turnstile-response"]')
-      ?.value?.trim();
 
     if (!name || stock === "" || !proofs.length) {
       setStatus(
@@ -131,44 +150,38 @@
       return;
     }
 
-    // Turnstile optionnel ici : l'accès /admin/app exige déjà une session Discord admin.
-    // Si le widget Cloudflare est en erreur (110200), on laisse quand même envoyer.
-
-    const endpoint = document.documentElement.dataset.submitEndpoint.trim();
-    if (!endpoint) {
-      setStatus("Le formulaire est temporairement indisponible.", "error");
-      return;
-    }
+    const endpoint = (
+      document.documentElement.dataset.submitEndpoint || "/api/submit"
+    ).trim();
 
     submitButton.disabled = true;
-    submitLabel.textContent = "Envoi en cours…";
-    setStatus("Transmission sécurisée de votre déclaration…");
+    if (submitLabel) submitLabel.textContent = "Envoi en cours…";
+    setStatus("Transmission de votre déclaration…");
 
     try {
       const payload = new FormData();
       payload.append("name", name);
       payload.append("stock", stock);
       for (const file of proofs) payload.append("proof", file);
-      if (turnstileToken) {
-        payload.append("cf-turnstile-response", turnstileToken);
-      }
 
       const response = await fetch(endpoint, { method: "POST", body: payload });
-      if (!response.ok) throw new Error("La transmission a échoué.");
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
 
       form.reset();
       resetPreview();
-      window.turnstile?.reset?.();
-      setStatus("Votre déclaration a bien été envoyée.", "success");
+      setStatus(data.message || "Votre déclaration a bien été envoyée.", "success");
     } catch (error) {
-      window.turnstile?.reset?.();
       setStatus(
-        "Impossible d'envoyer la déclaration. Réessayez dans quelques instants.",
+        `Impossible d'envoyer la déclaration : ${error?.message || "erreur"}`,
         "error"
       );
     } finally {
       submitButton.disabled = false;
-      submitLabel.textContent = "Envoyer la déclaration";
+      if (submitLabel) submitLabel.textContent = "Envoyer la déclaration";
     }
   });
 })();
