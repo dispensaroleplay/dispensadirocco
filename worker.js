@@ -467,6 +467,14 @@ async function handleAdminStocksApp(request, env) {
     .replace(
       />Ajouter une image</gi,
       ">Ajouter une ou plusieurs images<"
+    )
+    .replace(
+      /<script[^>]*src=["']https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js["'][^>]*>\s*<\/script>\s*/gi,
+      ""
+    )
+    .replace(
+      /<div[^>]*class=["']cf-turnstile["'][^>]*><\/div>\s*/gi,
+      "<!-- turnstile disabled on admin proxy -->"
     );
 
   const headers = new Headers(response.headers);
