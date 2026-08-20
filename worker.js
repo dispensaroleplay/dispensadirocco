@@ -943,6 +943,27 @@ function previousIsoWeekRangeParis(now = new Date()) {
   return { start: prevMonday, end: prevSunday };
 }
 
+function currentIsoWeekRangeParis(now = new Date()) {
+  const today = parisYmdParts(now);
+  const weekdayName = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    weekday: "short"
+  }).format(now);
+
+  const weekdayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const weekday = weekdayMap[weekdayName] || 1;
+  const daysSinceMonday = weekday - 1;
+  const thisMonday = addDaysToYmd(today, -daysSinceMonday);
+
+  return { start: thisMonday, end: today };
+}
+
+function resolveRecapRange(period, now = new Date()) {
+  return period === "current"
+    ? currentIsoWeekRangeParis(now)
+    : previousIsoWeekRangeParis(now);
+}
+
 function buildWeeklyProductionRecap(rows, range) {
   const totals = new Map();
   let entries = 0;
@@ -967,12 +988,13 @@ function buildWeeklyProductionRecap(rows, range) {
   return { entries, menusTotal, ranked };
 }
 
-function formatWeeklyRecapMessage(range, summary) {
-  const period = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
+function formatWeeklyRecapMessage(range, summary, period = "previous") {
+  const periodLabel = period === "current" ? "semaine en cours" : "hebdo";
+  const periodDates = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
 
   if (!summary.ranked.length) {
     return (
-      `📊 **Récap production hebdo** (${period})\n` +
+      `📊 **Récap production ${periodLabel}** (${periodDates})\n` +
       `Aucune déclaration trouvée sur la période.`
     );
   }
@@ -982,17 +1004,17 @@ function formatWeeklyRecapMessage(range, summary) {
   );
 
   return (
-    `📊 **Récap production hebdo** (${period})\n` +
+    `📊 **Récap production ${periodLabel}** (${periodDates})\n` +
     `Déclarations : **${summary.entries}** · Menus : **${Math.round(summary.menusTotal)}**\n\n` +
     lines.join("\n")
   );
 }
 
-async function runWeeklyProductionRecap(env) {
-  const range = previousIsoWeekRangeParis();
+async function runWeeklyProductionRecap(env, period = "previous") {
+  const range = resolveRecapRange(period);
   const rows = await readProductionSheetRows(env);
   const summary = buildWeeklyProductionRecap(rows, range);
-  const content = formatWeeklyRecapMessage(range, summary);
+  const content = formatWeeklyRecapMessage(range, summary, period);
 
   const webhook =
     env.DISCORD_RECAP_WEBHOOK_URL ||
@@ -1004,8 +1026,8 @@ async function runWeeklyProductionRecap(env) {
     throw new Error("Impossible de poster le récap Discord");
   }
 
-  console.log("[production] weekly recap posted", content);
-  return { ok: true, range, summary, content };
+  console.log("[production] weekly recap posted", period, content);
+  return { ok: true, period, range, summary, content };
 }
 
 async function handleProductionRecap(request, env) {
@@ -1021,8 +1043,25 @@ async function handleProductionRecap(request, env) {
     return json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  let period = String(url.searchParams.get("period") || "previous").toLowerCase();
+
   try {
-    const result = await runWeeklyProductionRecap(env);
+    const body = await request.clone().json().catch(() => null);
+    if (body?.period) period = String(body.period).toLowerCase();
+  } catch {
+    // body optionnel
+  }
+
+  if (period !== "current" && period !== "previous") {
+    return json(
+      { ok: false, error: 'period must be "current" or "previous"' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await runWeeklyProductionRecap(env, period);
     return json(result);
   } catch (error) {
     console.error("[production] recap error:", error?.message || error);

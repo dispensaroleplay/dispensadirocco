@@ -415,8 +415,14 @@ Webhook récap : `DISCORD_RECAP_WEBHOOK_URL` → sinon alerte → sinon producti
 Déclenchement manuel (même token que `/api/production`) :
 
 ```powershell
+# Semaine précédente (comme le cron du lundi)
 Invoke-RestMethod -Method POST `
   -Uri "https://dispensadirocco.ladispensadirocco.workers.dev/api/production/recap" `
+  -Headers @{ Authorization = "Bearer TON_PRODUCTION_API_TOKEN" }
+
+# Semaine en cours (test)
+Invoke-RestMethod -Method POST `
+  -Uri "https://dispensadirocco.ladispensadirocco.workers.dev/api/production/recap?period=current" `
   -Headers @{ Authorization = "Bearer TON_PRODUCTION_API_TOKEN" }
 ```
 
