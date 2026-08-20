@@ -465,7 +465,34 @@ async function handleAdminStocksApp(request, env) {
   let html = await response.text();
   const adminJs = await loadAdminAppJs();
 
+  const uploadFixCss = `
+<style id="admin-upload-fix">
+  .upload-zone { position: relative !important; overflow: hidden !important; }
+  .upload-zone input[type="file"],
+  #proof {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    clip: auto !important;
+    clip-path: none !important;
+    overflow: visible !important;
+    cursor: pointer !important;
+    z-index: 30 !important;
+    font-size: 100px !important;
+    display: block !important;
+    border: 0 !important;
+  }
+</style>`;
+
   html = html
+    .replace(
+      /<\/head>/i,
+      `${uploadFixCss}\n</head>`
+    )
     .replace(
       /(<input[^>]*\bid="proof"[^>]*)(\/?>)/i,
       (match, start, end) => {
@@ -501,7 +528,6 @@ async function handleAdminStocksApp(request, env) {
     );
 
   if (adminJs) {
-    // Script inline : évite les soucis de chargement /app.js via le proxy.
     html = html.replace(
       /<script[^>]*src=["']\/?app\.js["'][^>]*>\s*<\/script>/i,
       `<script>\n${adminJs}\n</script>`

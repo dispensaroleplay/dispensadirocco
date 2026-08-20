@@ -17,24 +17,11 @@
   const maxFiles = 10;
   let previewUrls = [];
 
-  // Couvre toute la zone : le clic ouvre le sélecteur nativement (sans .click() JS).
-  uploadZone.style.position = uploadZone.style.position || "relative";
+  // Le CSS injecté place #proof en overlay cliquable ; pas besoin de .click() JS.
   proofInput.multiple = true;
-  proofInput.accept = "image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp";
+  proofInput.accept =
+    "image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp";
   proofInput.required = true;
-  Object.assign(proofInput.style, {
-    position: "absolute",
-    inset: "0",
-    width: "100%",
-    height: "100%",
-    opacity: "0.001",
-    cursor: "pointer",
-    zIndex: "5",
-    display: "block",
-    margin: "0",
-    padding: "0",
-    border: "0"
-  });
 
   const setStatus = (message, state = "") => {
     status.textContent = message;
