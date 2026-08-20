@@ -17,6 +17,7 @@ const ADMIN_ALLOWLIST_KEY = "admin_allowlist";
 const SESSION_COOKIE = "dispensa_admin";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const PRODUCTION_DEDUP_TTL = 60 * 60;
+const PRODUCTION_PENDING_TTL = 60 * 60 * 24 * 7;
 const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 function json(data, init = {}) {
@@ -1225,55 +1226,6 @@ function sheetTabName(range) {
   return bang === -1 ? raw : raw.slice(0, bang);
 }
 
-async function updateProductionValidatedByMessageId(env, messageId, validated) {
-  const spreadsheetId = normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID);
-  const range = productionSheetRange(env);
-  const tab = sheetTabName(range);
-
-  if (!spreadsheetId) {
-    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
-  }
-
-  const rows = await readProductionSheetRows(env);
-  let rowNumber = -1;
-
-  for (let i = 0; i < rows.length; i++) {
-    const preuve = String(rows[i][5] || "");
-    if (preuve.includes(String(messageId))) {
-      rowNumber = i + 1;
-      break;
-    }
-  }
-
-  if (rowNumber < 1) {
-    throw new Error("Ligne Sheets introuvable pour ce message Discord");
-  }
-
-  const accessToken = await createGoogleAccessToken(env);
-  const cellRange = `${tab}!D${rowNumber}`;
-  const endpoint =
-    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}` +
-    `/values/${encodeURIComponent(cellRange)}?valueInputOption=USER_ENTERED`;
-
-  const response = await fetch(endpoint, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ values: [[validated]] })
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(
-      `Sheets update failed (${response.status}): ${data.error?.message || "unknown"}`
-    );
-  }
-
-  return { rowNumber, validated };
-}
-
 async function handleProductionValidateButton(interaction, env) {
   const guildId = interaction.guild_id || "";
   if (guildId !== env.DISCORD_GUILD_ID) {
@@ -1290,7 +1242,7 @@ async function handleProductionValidateButton(interaction, env) {
   }
 
   const customId = interaction.data?.custom_id || "";
-  const validated = customId === PROD_VALIDATE_OUI ? "Oui" : "Non";
+  const approved = customId === PROD_VALIDATE_OUI;
   const messageId = interaction.message?.id || "";
   const actorId = getInteractionUserId(interaction);
   const baseContent = String(interaction.message?.content || "").trim();
@@ -1299,23 +1251,58 @@ async function handleProductionValidateButton(interaction, env) {
     return discordEphemeral("Message Discord introuvable.");
   }
 
-  try {
-    await updateProductionValidatedByMessageId(env, messageId, validated);
-  } catch (error) {
-    console.error("[production] validate error:", error?.message || error);
-    await postProductionAlert(
-      env,
-      `❌ **Alerte validation production**\nMessage \`${messageId}\`\n${error?.message || "unknown"}`
-    );
+  if (!env.SITE_STATE) {
+    return discordEphemeral("SITE_STATE KV manquant : impossible de valider.");
+  }
+
+  const pendingKey = `production_pending:${messageId}`;
+  const pendingRaw = await env.SITE_STATE.get(pendingKey);
+
+  if (!pendingRaw) {
     return discordEphemeral(
-      `❌ Impossible de mettre à jour le Sheet : ${error?.message || "unknown"}`
+      "Cette déclaration n'est plus en attente (déjà traitée ou expirée)."
     );
   }
 
-  const statusLine =
-    validated === "Oui"
-      ? `✅ **Validé** par <@${actorId}>`
-      : `🚫 **Refusé** par <@${actorId}>`;
+  let pending;
+  try {
+    pending = JSON.parse(pendingRaw);
+  } catch {
+    return discordEphemeral("Données de déclaration invalides.");
+  }
+
+  const sheetRow = [
+    pending.date || parisDateString(),
+    pending.nom,
+    String(pending.stock),
+    "Oui",
+    "BOT",
+    pending.discordUrl || "",
+    ""
+  ];
+
+  if (approved) {
+    try {
+      await appendProductionSheetRow(env, sheetRow);
+    } catch (error) {
+      console.error("[production] validate sheets error:", error?.message || error);
+      await postProductionAlert(
+        env,
+        `❌ **Alerte validation → Sheets**\n` +
+          `**${pending.nom}** (${pending.stock})\n` +
+          `${error?.message || "unknown"}`
+      );
+      return discordEphemeral(
+        `❌ Impossible d'écrire dans Google Sheets : ${error?.message || "unknown"}`
+      );
+    }
+  }
+
+  await env.SITE_STATE.delete(pendingKey);
+
+  const statusLine = approved
+    ? `✅ **Validé** par <@${actorId}> — écrit dans Google Sheets`
+    : `🚫 **Refusé** par <@${actorId}> — non écrit dans Google Sheets`;
 
   const nextContent = baseContent
     ? `${baseContent}\n\n${statusLine}`
@@ -1327,7 +1314,7 @@ async function handleProductionValidateButton(interaction, env) {
       content: nextContent,
       components: productionValidateComponents(
         true,
-        validated === "Oui" ? "Validé" : "Refusé"
+        approved ? "Validé" : "Refusé"
       )
     }
   });
@@ -1458,16 +1445,17 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
           return json({
             ok: true,
             duplicate: true,
-            message: `✅ Production déjà enregistrée (délai < 1 h) — ${stock} × ${nom}`,
+            message: `✅ Production déjà déclarée (délai < 1 h) — ${stock} × ${nom}`,
             discordUrl: previous.discordUrl || null,
-            sheetRow: previous.sheetRow || null
+            pending: true
           });
         }
       } catch {
         return json({
           ok: true,
           duplicate: true,
-          message: `✅ Production déjà enregistrée (délai < 1 h) — ${stock} × ${nom}`
+          message: `✅ Production déjà déclarée (délai < 1 h) — ${stock} × ${nom}`,
+          pending: true
         });
       }
     }
@@ -1493,57 +1481,39 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
     );
   }
 
-  const sheetRow = [
-    date,
-    nom,
-    String(stock),
-    "En attente",
-    "BOT",
-    discord.discordUrl,
-    ""
-  ];
-
-  try {
-    await appendProductionSheetRow(env, sheetRow);
-  } catch (error) {
-    console.error("[production] Sheets error:", error?.message || error);
-    await postProductionAlert(
-      env,
-      `❌ **Alerte Google Sheets**\n` +
-        `Discord OK pour **${nom}** (${stock} menus) mais l'écriture Sheets a échoué.\n` +
-        `Preuve : ${discord.discordUrl}\n` +
-        `Erreur : ${error?.message || "unknown"}`
-    );
-    return json(
-      {
-        ok: false,
-        error: `Impossible d'enregistrer la production : échec Google Sheets (${error?.message || "unknown"}).`,
-        discordUrl: discord.discordUrl
-      },
-      { status: 502 }
-    );
-  }
-
   if (env.SITE_STATE) {
+    await env.SITE_STATE.put(
+      `production_pending:${discord.messageId}`,
+      JSON.stringify({
+        nom,
+        stock,
+        date,
+        discordUrl: discord.discordUrl,
+        createdAt: new Date().toISOString()
+      }),
+      { expirationTtl: PRODUCTION_PENDING_TTL }
+    );
+
     await env.SITE_STATE.put(
       dedupKey,
       JSON.stringify({
         discordUrl: discord.discordUrl,
-        sheetRow,
+        messageId: discord.messageId,
         createdAt: new Date().toISOString()
       }),
       { expirationTtl: PRODUCTION_DEDUP_TTL }
     );
   }
 
-  const message = `✅ Production enregistrée dans Google Sheets — ${stock} × ${nom}`;
+  const message =
+    `⏳ Déclaration postée sur Discord — en attente de validation (Oui/Non) — ${stock} × ${nom}`;
   console.log("[production]", message, discord.discordUrl);
 
   return json({
     ok: true,
+    pending: true,
     message,
-    discordUrl: discord.discordUrl,
-    sheetRow
+    discordUrl: discord.discordUrl
   });
 }
 

@@ -322,7 +322,7 @@ Flux : source → Worker → webhook Discord (`#production-whebooks`) → append
 | Date | date du jour `DD/MM/YYYY` (Europe/Paris) |
 | Employé | `nom` |
 | Menus créés | `stock` |
-| Validé | `En attente` (puis Oui/Non via boutons Discord) |
+| Validé | `Oui` (uniquement après clic **Valider** sur Discord) |
 | Responsable | `BOT` |
 | Preuve / lien Discord | lien du message posté |
 | Commentaire | vide |
@@ -445,11 +445,10 @@ Invoke-RestMethod -Method POST `
 
 ### Boutons Valider / Refuser
 
-Les nouvelles déclarations partent via le **Bot** (`DISCORD_BOT_TOKEN`) dans `#production-whebooks` avec boutons :
+Flux :
 
-- **Valider** → colonne Validé = `Oui`
-- **Refuser** → colonne Validé = `Non`
+1. Déclaration → message Discord avec boutons **vert Valider** / **rouge Refuser** (rien dans Sheets encore)
+2. **Valider** → le bot écrit la ligne dans Google Sheets (`Validé = Oui`)
+3. **Refuser** → rien n’est écrit dans Sheets
 
-Le Sheet démarre à `En attente`. Réservé au rôle `DISCORD_BOT_ROLE_IDS`.
-
-Sans `DISCORD_BOT_TOKEN`, fallback webhook (sans boutons).
+Nécessite `DISCORD_BOT_TOKEN` + rôle `DISCORD_BOT_ROLE_IDS`. Données en attente stockées 7 jours en KV.
