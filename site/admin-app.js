@@ -17,8 +17,24 @@
   const maxFiles = 10;
   let previewUrls = [];
 
+  // Couvre toute la zone : le clic ouvre le sélecteur nativement (sans .click() JS).
+  uploadZone.style.position = uploadZone.style.position || "relative";
   proofInput.multiple = true;
-  proofInput.accept = "image/png,image/jpeg,image/jpg,image/webp,image/*";
+  proofInput.accept = "image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp";
+  proofInput.required = true;
+  Object.assign(proofInput.style, {
+    position: "absolute",
+    inset: "0",
+    width: "100%",
+    height: "100%",
+    opacity: "0.001",
+    cursor: "pointer",
+    zIndex: "5",
+    display: "block",
+    margin: "0",
+    padding: "0",
+    border: "0"
+  });
 
   const setStatus = (message, state = "") => {
     status.textContent = message;
@@ -40,7 +56,7 @@
   const isAllowedImage = (file) => {
     const type = String(file.type || "").toLowerCase();
     if (type.startsWith("image/")) return true;
-    return /\.(png|jpe?g|webp)$/i.test(file.name || "");
+    return /\.(png|jpe?g|webp|heic|heif)$/i.test(file.name || "");
   };
 
   const collectValidFiles = (fileList) => {
@@ -54,7 +70,7 @@
 
     for (const file of files) {
       if (!isAllowedImage(file)) {
-        setStatus("Formats acceptés : PNG, JPEG ou WEBP.", "error");
+        setStatus("Formats acceptés : PNG, JPEG, WEBP (ou image téléphone).", "error");
         return null;
       }
       if (file.size === 0 || file.size > maxFileSize) {
@@ -90,21 +106,8 @@
           : `${files.length} images sélectionnées`;
     }
     uploadZone.classList.add("has-file");
-    setStatus("");
+    setStatus(`${files.length} image(s) prête(s) à envoyer.`);
   };
-
-  uploadZone.addEventListener("click", (event) => {
-    if (event.target === proofInput) return;
-    event.preventDefault();
-    proofInput.click();
-  });
-
-  uploadZone.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      proofInput.click();
-    }
-  });
 
   proofInput.addEventListener("change", () => updateFiles(proofInput.files));
 
@@ -164,7 +167,11 @@
       payload.append("stock", stock);
       for (const file of proofs) payload.append("proof", file);
 
-      const response = await fetch(endpoint, { method: "POST", body: payload });
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: payload,
+        credentials: "same-origin"
+      });
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || data.ok === false) {

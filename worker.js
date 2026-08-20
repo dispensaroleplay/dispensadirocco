@@ -437,18 +437,17 @@ async function handleAdminStocksApp(request, env) {
   const url = new URL(request.url);
   let stocksPath = url.pathname.slice(prefix.length) || "/";
 
+  const loadAdminAppJs = async () => {
+    const asset = await env.ASSETS.fetch(new Request(new URL("/admin-app.js", request.url)));
+    if (!asset.ok) return null;
+    return asset.text();
+  };
+
   // Multi-images : on sert notre app.js à la place de celui de Pages.
   if (stocksPath === "/app.js") {
-    const assetUrl = new URL("/admin-app.js", request.url);
-    const asset = await env.ASSETS.fetch(new Request(assetUrl));
-    if (!asset.ok) {
-      return new Response("// admin-app.js missing from assets\n", {
-        status: 500,
-        headers: { "Content-Type": "application/javascript; charset=utf-8" }
-      });
-    }
-    return new Response(await asset.text(), {
-      status: 200,
+    const source = await loadAdminAppJs();
+    return new Response(source || "// admin-app.js missing\n", {
+      status: source ? 200 : 500,
       headers: {
         "Content-Type": "application/javascript; charset=utf-8",
         "Cache-Control": "no-store"
@@ -464,6 +463,8 @@ async function handleAdminStocksApp(request, env) {
   }
 
   let html = await response.text();
+  const adminJs = await loadAdminAppJs();
+
   html = html
     .replace(
       /(<input[^>]*\bid="proof"[^>]*)(\/?>)/i,
@@ -473,10 +474,11 @@ async function handleAdminStocksApp(request, env) {
         if (/accept=/i.test(next)) {
           next = next.replace(
             /accept=["'][^"']*["']/i,
-            'accept="image/png,image/jpeg,image/jpg,image/webp,image/*"'
+            'accept="image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp"'
           );
         } else {
-          next += ' accept="image/png,image/jpeg,image/jpg,image/webp,image/*"';
+          next +=
+            ' accept="image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp"';
         }
         return `${next}${end}`;
       }
@@ -486,6 +488,10 @@ async function handleAdminStocksApp(request, env) {
       ">Ajouter une ou plusieurs images<"
     )
     .replace(
+      /PNG, JPG ou WEBP - 8 Mo maximum/gi,
+      "PNG, JPG ou WEBP — plusieurs images possibles, 8 Mo max chacune"
+    )
+    .replace(
       /<script[^>]*src=["']https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js["'][^>]*>\s*<\/script>\s*/gi,
       ""
     )
@@ -493,6 +499,14 @@ async function handleAdminStocksApp(request, env) {
       /<div[^>]*class=["']cf-turnstile["'][^>]*><\/div>\s*/gi,
       "<!-- turnstile disabled on admin proxy -->"
     );
+
+  if (adminJs) {
+    // Script inline : évite les soucis de chargement /app.js via le proxy.
+    html = html.replace(
+      /<script[^>]*src=["']\/?app\.js["'][^>]*>\s*<\/script>/i,
+      `<script>\n${adminJs}\n</script>`
+    );
+  }
 
   const headers = new Headers(response.headers);
   headers.set("Cache-Control", "no-store");
