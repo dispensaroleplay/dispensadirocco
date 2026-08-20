@@ -29,3 +29,5 @@ Le binding KV `SITE_STATE` et le secret `DISCORD_PUBLIC_KEY` se configurent dans
 | Root directory | *(vide / racine du repo)* |
 
 Le Worker dans le dashboard doit s’appeler **dispensadirocco**.
+
+API production (Discord + Google Sheets) : `POST /api/production` — voir **SETUP-WORKERS.md**.

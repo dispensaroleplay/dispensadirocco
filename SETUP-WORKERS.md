@@ -297,4 +297,90 @@ Tu peux aussi mettre un domaine custom sur l’app stocks (Pages) :
 | OAuth Discord échoue | Redirect `/admin/callback` manquant pour le **nouveau** domaine |
 | Discord interactions invalides | Endpoint URL pas mis à jour sur la bonne app |
 | Certificat SSL en attente | Attendre 5–15 min après le premier deploy |
-ii
+
+## Déclarations production → Google Sheets
+
+Endpoint : `POST /api/production`
+
+Flux : source → Worker → webhook Discord (`#production-whebooks`) → append Google Sheets.
+
+### Mapping
+
+| Colonne Sheets | Valeur |
+|----------------|--------|
+| Date | date du jour `DD/MM/YYYY` (Europe/Paris) |
+| Employé | `nom` |
+| Menus créés | `stock` |
+| Validé | `Oui` |
+| Responsable | `BOT` |
+| Preuve / lien Discord | lien du message posté |
+| Commentaire | vide |
+
+### 1 — Compte de service Google
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → crée un projet (ou réutilise)
+2. **APIs & Services** → active **Google Sheets API**
+3. **IAM & Admin** → **Service Accounts** → **Create**
+4. Crée une clé JSON → télécharge le fichier
+5. Dans le JSON, note :
+   - `client_email` → secret `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `private_key` → secret `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (garde les `\n` ou colle le PEM avec vrais retours à la ligne)
+
+### 2 — Partager le Google Sheet
+
+1. Ouvre le fichier Sheets des quotas
+2. **Partager** avec l’email du compte de service → rôle **Éditeur**
+3. L’ID du spreadsheet est dans l’URL :
+   `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
+4. Note le nom exact de l’onglet (ex. `Feuille1`) pour le range `Feuille1!A:G`
+
+### 3 — Webhook Discord
+
+1. Salon `#production-whebooks` → **Paramètres** → **Intégrations** → **Webhooks** → **Nouveau**
+2. Nom affiché : `Production`
+3. Copie l’URL → secret `DISCORD_PRODUCTION_WEBHOOK_URL`
+4. Copie l’ID du salon → var `PRODUCTION_DISCORD_CHANNEL_ID`
+
+### 4 — Secrets / vars Cloudflare (worker `dispensadirocco`)
+
+| Nom | Type | Rôle |
+|-----|------|------|
+| `PRODUCTION_API_TOKEN` | Secret | Auth de `POST /api/production` |
+| `DISCORD_PRODUCTION_WEBHOOK_URL` | Secret | Webhook Discord production |
+| `PRODUCTION_DISCORD_CHANNEL_ID` | Var | ID salon `#production-whebooks` |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Secret | Email du compte de service |
+| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Secret | Clé privée PEM |
+| `GOOGLE_SHEETS_SPREADSHEET_ID` | Secret / var | ID du fichier Sheets |
+| `GOOGLE_SHEETS_RANGE` | Var | Range append (défaut `Feuille1!A:G`) |
+
+`DISCORD_GUILD_ID` est déjà dans `wrangler.jsonc`.
+
+### 5 — Appeler l’API depuis ta source
+
+```bash
+curl -X POST "https://<ton-domaine>/api/production" \
+  -H "Authorization: Bearer TON_PRODUCTION_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"nom\":\"Julien Phantom\",\"stock\":1150}"
+```
+
+Headers acceptés : `Authorization: Bearer …` **ou** `X-Api-Token: …`
+
+Body accepté :
+```json
+{ "nom": "Julien Phantom", "stock": 1150 }
+```
+
+Réponse succès :
+```json
+{
+  "ok": true,
+  "message": "✅ Production enregistrée dans Google Sheets — 1150 × Julien Phantom",
+  "discordUrl": "https://discord.com/channels/.../.../...",
+  "sheetRow": ["20/08/2026", "Julien Phantom", "1150", "Oui", "BOT", "https://...", ""]
+}
+```
+
+Anti-doublon : même `nom` + `stock` à moins d’**1 heure** d’écart → `duplicate: true`, pas de 2ᵉ ligne Sheets. Après 1 h, une nouvelle déclaration est acceptée.
+
+Branchez la source existante (formulaire stocks / script) sur cet endpoint **à la place** d’un post Discord direct.

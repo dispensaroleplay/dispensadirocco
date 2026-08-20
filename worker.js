@@ -4,6 +4,7 @@
 // - GET  /api/status
 // - GET  /api/admin/access
 // - POST /api/submit (admin session → proxy app stocks)
+// - POST /api/production (Discord webhook + Google Sheets)
 // - GET  /admin, /admin/app, /admin/login, /admin/callback
 // - POST /discord/interactions
 // - static files via env.ASSETS (./site)
@@ -13,6 +14,8 @@ const CLOSED_ID = "restaurant_closed";
 const ADMIN_ALLOWLIST_KEY = "admin_allowlist";
 const SESSION_COOKIE = "dispensa_admin";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+const PRODUCTION_DEDUP_TTL = 60 * 60;
+const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 function json(data, init = {}) {
   return new Response(JSON.stringify(data), {
@@ -635,6 +638,318 @@ async function handleDiscordInteraction(request, env) {
   );
 }
 
+function readProductionToken(request) {
+  const bearer = request.headers.get("Authorization") || "";
+  if (bearer.toLowerCase().startsWith("bearer ")) {
+    return bearer.slice(7).trim();
+  }
+  return (request.headers.get("X-Api-Token") || "").trim();
+}
+
+function parisDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(date);
+}
+
+function pemToArrayBuffer(pem) {
+  const cleaned = String(pem)
+    .replace(/\\n/g, "\n")
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(cleaned);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function createGoogleAccessToken(env) {
+  const email = env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKeyPem = env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+
+  if (!email || !privateKeyPem) {
+    throw new Error(
+      "GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is missing"
+    );
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const claim = {
+    iss: email,
+    scope: GOOGLE_SHEETS_SCOPE,
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600
+  };
+
+  const encoder = new TextEncoder();
+  const unsigned =
+    `${bytesToBase64Url(encoder.encode(JSON.stringify(header)))}.` +
+    `${bytesToBase64Url(encoder.encode(JSON.stringify(claim)))}`;
+
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToArrayBuffer(privateKeyPem),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    encoder.encode(unsigned)
+  );
+  const jwt = `${unsigned}.${bytesToBase64Url(new Uint8Array(signature))}`;
+
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt
+    })
+  });
+
+  const tokenData = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenData.access_token) {
+    throw new Error(
+      `Google OAuth failed (${tokenResponse.status}): ${tokenData.error || "unknown"}`
+    );
+  }
+
+  return tokenData.access_token;
+}
+
+async function appendProductionSheetRow(env, row) {
+  const spreadsheetId = env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const range = env.GOOGLE_SHEETS_RANGE || "Feuille1!A:G";
+
+  if (!spreadsheetId) {
+    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
+  }
+
+  const accessToken = await createGoogleAccessToken(env);
+  const endpoint =
+    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}` +
+    `/values/${encodeURIComponent(range)}:append` +
+    `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ values: [row] })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `Sheets append failed (${response.status}): ${data.error?.message || "unknown"}`
+    );
+  }
+
+  return data;
+}
+
+async function postProductionDiscordMessage(env, nom, stock) {
+  const webhookUrl = env.DISCORD_PRODUCTION_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("DISCORD_PRODUCTION_WEBHOOK_URL is missing");
+  }
+
+  const content =
+    `Nouvelle déclaration de production\n` +
+    `Nom : ${nom}\n` +
+    `Stock produit : ${stock}`;
+
+  const url = new URL(webhookUrl);
+  url.searchParams.set("wait", "true");
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.id) {
+    throw new Error(
+      `Discord webhook failed (${response.status}): ${data.message || "unknown"}`
+    );
+  }
+
+  const guildId = env.DISCORD_GUILD_ID;
+  const channelId =
+    env.PRODUCTION_DISCORD_CHANNEL_ID || data.channel_id || "";
+
+  if (!guildId || !channelId) {
+    throw new Error(
+      "DISCORD_GUILD_ID or PRODUCTION_DISCORD_CHANNEL_ID is missing"
+    );
+  }
+
+  const discordUrl = `https://discord.com/channels/${guildId}/${channelId}/${data.id}`;
+  return { messageId: data.id, channelId, discordUrl };
+}
+
+async function buildProductionDedupKey(nom, stock) {
+  const raw = `${nom.toLowerCase()}|${stock}`;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(raw)
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return `production_dedup:${hex}`;
+}
+
+async function handleProductionDeclaration(request, env) {
+  if (!env.PRODUCTION_API_TOKEN) {
+    console.error("[production] PRODUCTION_API_TOKEN is not configured");
+    return json(
+      { ok: false, error: "PRODUCTION_API_TOKEN is not configured" },
+      { status: 503 }
+    );
+  }
+
+  const providedToken = readProductionToken(request);
+  if (!providedToken || providedToken !== env.PRODUCTION_API_TOKEN) {
+    return json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json(
+      { ok: false, error: "Invalid JSON body" },
+      { status: 400 }
+    );
+  }
+
+  const nom = String(body?.nom ?? body?.name ?? "").trim();
+  const stockRaw = body?.stock ?? body?.stock_produit ?? body?.menus;
+  const stock = typeof stockRaw === "number" ? stockRaw : Number(stockRaw);
+
+  if (!nom) {
+    return json(
+      {
+        ok: false,
+        error: "Impossible d'enregistrer la production : nom manquant."
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!Number.isFinite(stock) || stock < 0) {
+    return json(
+      {
+        ok: false,
+        error: "Impossible d'enregistrer la production : quantité manquante."
+      },
+      { status: 400 }
+    );
+  }
+
+  const date = parisDateString();
+  const dedupKey = await buildProductionDedupKey(nom, stock);
+
+  if (env.SITE_STATE) {
+    const already = await env.SITE_STATE.get(dedupKey);
+    if (already) {
+      try {
+        const previous = JSON.parse(already);
+        const createdAt = Date.parse(previous.createdAt || "");
+        const ageMs = Number.isFinite(createdAt) ? Date.now() - createdAt : 0;
+        if (ageMs < PRODUCTION_DEDUP_TTL * 1000) {
+          return json({
+            ok: true,
+            duplicate: true,
+            message: `✅ Production déjà enregistrée (délai < 1 h) — ${stock} × ${nom}`,
+            discordUrl: previous.discordUrl || null,
+            sheetRow: previous.sheetRow || null
+          });
+        }
+      } catch {
+        return json({
+          ok: true,
+          duplicate: true,
+          message: `✅ Production déjà enregistrée (délai < 1 h) — ${stock} × ${nom}`
+        });
+      }
+    }
+  }
+
+  let discord;
+  try {
+    discord = await postProductionDiscordMessage(env, nom, stock);
+  } catch (error) {
+    console.error("[production] Discord error:", error?.message || error);
+    return json(
+      {
+        ok: false,
+        error: `Impossible d'enregistrer la production : échec Discord (${error?.message || "unknown"}).`
+      },
+      { status: 502 }
+    );
+  }
+
+  const sheetRow = [
+    date,
+    nom,
+    String(stock),
+    "Oui",
+    "BOT",
+    discord.discordUrl,
+    ""
+  ];
+
+  try {
+    await appendProductionSheetRow(env, sheetRow);
+  } catch (error) {
+    console.error("[production] Sheets error:", error?.message || error);
+    return json(
+      {
+        ok: false,
+        error: `Impossible d'enregistrer la production : échec Google Sheets (${error?.message || "unknown"}).`,
+        discordUrl: discord.discordUrl
+      },
+      { status: 502 }
+    );
+  }
+
+  if (env.SITE_STATE) {
+    await env.SITE_STATE.put(
+      dedupKey,
+      JSON.stringify({
+        discordUrl: discord.discordUrl,
+        sheetRow,
+        createdAt: new Date().toISOString()
+      }),
+      { expirationTtl: PRODUCTION_DEDUP_TTL }
+    );
+  }
+
+  const message = `✅ Production enregistrée dans Google Sheets — ${stock} × ${nom}`;
+  console.log("[production]", message, discord.discordUrl);
+
+  return json({
+    ok: true,
+    message,
+    discordUrl: discord.discordUrl,
+    sheetRow
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -676,6 +991,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/api/submit") {
       return handleAdminSubmit(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/production") {
+      return handleProductionDeclaration(request, env);
     }
 
     if (request.method === "GET" && url.pathname === "/admin") {
