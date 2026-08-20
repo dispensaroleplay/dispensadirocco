@@ -23,7 +23,9 @@
     "ADMIN_REDIRECT_URL": "https://stocks-ladispensadirocco.pages.dev",
     "ADMIN_STOCKS_ORIGIN": "https://stocks-ladispensadirocco.pages.dev",
     "ADMIN_DISCORD_IDS": "606028135904968714",
-    "DISCORD_BOT_ROLE_IDS": "1530016795740868748"
+    "DISCORD_BOT_ROLE_IDS": "1530016795740868748",
+    "GOOGLE_SHEETS_RANGE": "Production!A:G",
+    "GOOGLE_STOCK_ADJUST_RANGE": "Stock!A11:F"
   },
   "observability": {
     "enabled": true

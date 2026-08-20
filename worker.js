@@ -950,7 +950,7 @@ function productionSheetRange(env) {
 }
 
 function stockAdjustSheetRange(env) {
-  return String(env.GOOGLE_STOCK_ADJUST_RANGE || "").trim();
+  return String(env.GOOGLE_STOCK_ADJUST_RANGE || "Stock!A11:F").trim();
 }
 
 function stockAdjustSpreadsheetId(env) {

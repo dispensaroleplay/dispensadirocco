@@ -372,7 +372,7 @@ Flux : source → Worker → webhook Discord (`#production-whebooks`) → append
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Secret | Clé privée PEM |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Secret / var | ID du fichier Sheets |
 | `GOOGLE_SHEETS_RANGE` | Var | Range append production (ex. `Production!A:G`) |
-| `GOOGLE_STOCK_ADJUST_RANGE` | Var | Range append ajustements stock (ex. `Ajustements!A:F`) |
+| `GOOGLE_STOCK_ADJUST_RANGE` | Var | Défaut `Stock!A11:F` (tableau sous l’en-tête ligne 11) |
 | `GOOGLE_STOCK_ADJUST_SPREADSHEET_ID` | Secret / var | Optionnel : autre fichier Sheets pour les ajustements |
 
 À chaque **Valider** Discord, le Worker écrit :
