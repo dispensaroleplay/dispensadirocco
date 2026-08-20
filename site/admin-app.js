@@ -131,13 +131,8 @@
       return;
     }
 
-    if (!turnstileToken) {
-      setStatus(
-        "Veuillez terminer la vérification de sécurité avant l'envoi.",
-        "error"
-      );
-      return;
-    }
+    // Turnstile optionnel ici : l'accès /admin/app exige déjà une session Discord admin.
+    // Si le widget Cloudflare est en erreur (110200), on laisse quand même envoyer.
 
     const endpoint = document.documentElement.dataset.submitEndpoint.trim();
     if (!endpoint) {
@@ -154,17 +149,19 @@
       payload.append("name", name);
       payload.append("stock", stock);
       for (const file of proofs) payload.append("proof", file);
-      payload.append("cf-turnstile-response", turnstileToken);
+      if (turnstileToken) {
+        payload.append("cf-turnstile-response", turnstileToken);
+      }
 
       const response = await fetch(endpoint, { method: "POST", body: payload });
       if (!response.ok) throw new Error("La transmission a échoué.");
 
       form.reset();
       resetPreview();
-      window.turnstile?.reset();
+      window.turnstile?.reset?.();
       setStatus("Votre déclaration a bien été envoyée.", "success");
     } catch (error) {
-      window.turnstile?.reset();
+      window.turnstile?.reset?.();
       setStatus(
         "Impossible d'envoyer la déclaration. Réessayez dans quelques instants.",
         "error"
