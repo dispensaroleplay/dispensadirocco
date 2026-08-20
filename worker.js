@@ -515,11 +515,22 @@ function discordEphemeral(content) {
   });
 }
 
+function discordChannelReply(content) {
+  return json({
+    type: 4,
+    data: { content }
+  });
+}
+
 function discordDeferEphemeral() {
   return json({
     type: 5,
     data: { flags: 64 }
   });
+}
+
+function discordDeferPublic() {
+  return json({ type: 5 });
 }
 
 async function editOriginalInteraction(applicationId, interactionToken, content) {
@@ -558,12 +569,12 @@ function getSlashOption(interaction, name) {
 async function handleAdminSlashCommand(interaction, env, ctx) {
   const guildId = interaction.guild_id || "";
   if (guildId !== env.DISCORD_GUILD_ID) {
-    return discordEphemeral("Cette commande n'est pas autorisée ici.");
+    return discordChannelReply("Cette commande n'est pas autorisée ici.");
   }
 
   if (!(await canUseBotCommands(interaction, env))) {
     const roleConfigured = getBotRoleIds(env).length > 0;
-    return discordEphemeral(
+    return discordChannelReply(
       roleConfigured
         ? "Tu n'as pas le rôle requis pour utiliser les commandes du bot."
         : "Tu n'as pas la permission de gérer les accès admin."
@@ -581,7 +592,7 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
     const applicationId = env.DISCORD_CLIENT_ID || env.ADMIN_DISCORD_APPLICATION_ID;
 
     if (!applicationId) {
-      return discordEphemeral(
+      return discordChannelReply(
         "DISCORD_CLIENT_ID manquant : impossible de finaliser la commande /recap."
       );
     }
@@ -589,14 +600,13 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
     ctx.waitUntil(
       (async () => {
         try {
-          const result = await runWeeklyProductionRecap(env, period, employe);
-          const label =
-            period === "current" ? "semaine en cours" : "semaine précédente";
-          const who = employe ? ` · employé **${employe}**` : "";
+          const result = await runWeeklyProductionRecap(env, period, employe, {
+            skipDiscordPost: true
+          });
           await editOriginalInteraction(
             applicationId,
             interaction.token,
-            `✅ Récap **${label}**${who} posté.\n\n${result.content}`
+            result.content
           );
         } catch (error) {
           console.error("[production] /recap error:", error?.message || error);
@@ -613,7 +623,7 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
       })()
     );
 
-    return discordDeferEphemeral();
+    return discordDeferPublic();
   }
 
   if (command === "stats") {
@@ -626,7 +636,7 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
     const applicationId = env.DISCORD_CLIENT_ID || env.ADMIN_DISCORD_APPLICATION_ID;
 
     if (!applicationId) {
-      return discordEphemeral(
+      return discordChannelReply(
         "DISCORD_CLIENT_ID manquant : impossible de finaliser la commande /stats."
       );
     }
@@ -651,13 +661,13 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
       })()
     );
 
-    return discordDeferEphemeral();
+    return discordDeferPublic();
   }
 
   if (command === "admin-list") {
     const effective = await getAdminAllowlist(env);
     if (!effective.length) {
-      return discordEphemeral("Aucun admin autorisé pour le moment.");
+      return discordChannelReply("Aucun admin autorisé pour le moment.");
     }
 
     const lines = effective.map(id => {
@@ -665,47 +675,47 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
       return `• \`${id}\`${locked}`;
     });
 
-    return discordEphemeral(`Admins autorisés :\n${lines.join("\n")}`);
+    return discordChannelReply(`Admins autorisés :\n${lines.join("\n")}`);
   }
 
   if (command === "admin-add") {
     const targetId = String(getSlashOption(interaction, "user") || "");
     if (!targetId) {
-      return discordEphemeral("Utilisateur introuvable.");
+      return discordChannelReply("Utilisateur introuvable.");
     }
 
     if (stored.includes(targetId)) {
-      return discordEphemeral(`<@${targetId}> est déjà admin.`);
+      return discordChannelReply(`<@${targetId}> est déjà admin.`);
     }
 
     stored.push(targetId);
     await writeAdminAllowlist(env, stored);
 
-    return discordEphemeral(`✅ <@${targetId}> peut maintenant accéder à ADMIN.`);
+    return discordChannelReply(`✅ <@${targetId}> peut maintenant accéder à ADMIN.`);
   }
 
   if (command === "admin-remove") {
     const targetId = String(getSlashOption(interaction, "user") || "");
     if (!targetId) {
-      return discordEphemeral("Utilisateur introuvable.");
+      return discordChannelReply("Utilisateur introuvable.");
     }
 
     if (bootstrap.has(targetId)) {
-      return discordEphemeral(
+      return discordChannelReply(
         "Cet admin est défini dans ADMIN_DISCORD_IDS (bootstrap) et ne peut pas être retiré via Discord."
       );
     }
 
     const next = stored.filter(id => id !== targetId);
     if (next.length === stored.length) {
-      return discordEphemeral(`<@${targetId}> n'est pas dans la liste admin.`);
+      return discordChannelReply(`<@${targetId}> n'est pas dans la liste admin.`);
     }
 
     await writeAdminAllowlist(env, next);
-    return discordEphemeral(`🔒 <@${targetId}> n'a plus accès à ADMIN.`);
+    return discordChannelReply(`🔒 <@${targetId}> n'a plus accès à ADMIN.`);
   }
 
-  return discordEphemeral("Commande inconnue.");
+  return discordChannelReply("Commande inconnue.");
 }
 
 async function handleDiscordInteraction(request, env, ctx) {
@@ -1152,23 +1162,30 @@ function formatWeeklyRecapMessage(range, summary, period = "previous") {
   );
 }
 
-async function runWeeklyProductionRecap(env, period = "previous", employeFilter = "") {
+async function runWeeklyProductionRecap(
+  env,
+  period = "previous",
+  employeFilter = "",
+  options = {}
+) {
   const range = resolveRecapRange(period);
   const rows = await readProductionSheetRows(env);
   const summary = buildWeeklyProductionRecap(rows, range, employeFilter);
   const content = formatWeeklyRecapMessage(range, summary, period);
 
-  const webhook =
-    env.DISCORD_RECAP_WEBHOOK_URL ||
-    env.DISCORD_ALERT_WEBHOOK_URL ||
-    env.DISCORD_PRODUCTION_WEBHOOK_URL;
+  if (!options.skipDiscordPost) {
+    const webhook =
+      env.DISCORD_RECAP_WEBHOOK_URL ||
+      env.DISCORD_ALERT_WEBHOOK_URL ||
+      env.DISCORD_PRODUCTION_WEBHOOK_URL;
 
-  const posted = await postDiscordWebhookContent(webhook, content);
-  if (!posted) {
-    throw new Error("Impossible de poster le récap Discord");
+    const posted = await postDiscordWebhookContent(webhook, content);
+    if (!posted) {
+      throw new Error("Impossible de poster le récap Discord");
+    }
   }
 
-  console.log("[production] weekly recap posted", period, employeFilter || "*", content);
+  console.log("[production] weekly recap", period, employeFilter || "*", content);
   return {
     ok: true,
     period,

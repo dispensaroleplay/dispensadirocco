@@ -185,8 +185,10 @@ Dans Discord, en tant qu'admin bootstrap :
 - `/admin-add @personne` — autorise l'accès ADMIN
 - `/admin-remove @personne` — retire l'accès
 - `/admin-list` — liste les admins
-- `/recap` — poste le récap production (option `periode` : semaine en cours par défaut, ou précédente ; option `employe` pour filtrer un nom)
-- `/stats` — stats éphémères (jour / semaine) sans poster dans le salon récap
+- `/recap` — récap visible **dans le salon** où la commande est lancée (`periode`, `employe` optionnels)
+- `/stats` — stats visibles **dans le salon** où la commande est lancée
+
+Le cron du lundi continue d’envoyer le récap vers `DISCORD_RECAP_WEBHOOK_URL`.
 
 Variables utiles :
 
