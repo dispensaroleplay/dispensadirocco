@@ -1027,6 +1027,20 @@ button { font: inherit; }
 
 .footer-links a:hover { color: var(--gold-light); }
 
+.site-credit {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: #8a8378;
+  font-size: .68rem;
+  letter-spacing: .12em;
+  text-transform: none;
+  text-align: center;
+}
+
+.site-credit::before {
+  content: none;
+}
+
 /* Lightbox */
 .lightbox {
   position: fixed;
