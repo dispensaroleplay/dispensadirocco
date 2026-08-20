@@ -1533,6 +1533,8 @@ async function handleProductionValidateButton(interaction, env) {
     commentaire
   ];
 
+  let adjustStatus = "";
+
   if (approved) {
     try {
       await appendProductionSheetRow(env, sheetRow);
@@ -1552,16 +1554,26 @@ async function handleProductionValidateButton(interaction, env) {
     try {
       const adjust = await appendStockAdjustSheetRow(env, pending.stock);
       if (adjust?.skipped) {
-        console.warn(
-          "[production] GOOGLE_STOCK_ADJUST_RANGE non défini — skip ajustement stock"
+        adjustStatus =
+          "\n⚠️ Ajustement stock **non écrit** : variable `GOOGLE_STOCK_ADJUST_RANGE` manquante.";
+        await postProductionAlert(
+          env,
+          `⚠️ **Ajustement stock ignoré**\n` +
+            `Définis la variable Cloudflare \`GOOGLE_STOCK_ADJUST_RANGE\` ` +
+            `(ex. \`NomOnglet!A:F\`).\n` +
+            `Production **${pending.nom}** (${pending.stock}) OK.`
         );
+      } else {
+        adjustStatus = "\n📦 Ajustement stock : **écrit** (Vente particuliers / grossiste).";
       }
     } catch (error) {
       console.error("[production] stock adjust sheets error:", error?.message || error);
+      adjustStatus = `\n⚠️ Ajustement stock **échoué** : ${error?.message || "unknown"}`;
       await postProductionAlert(
         env,
         `⚠️ **Production OK, ajustement stock échoué**\n` +
           `**${pending.nom}** (${pending.stock})\n` +
+          `Range : \`${stockAdjustSheetRange(env) || "(vide)"}\`\n` +
           `${error?.message || "unknown"}`
       );
     }
@@ -1570,7 +1582,7 @@ async function handleProductionValidateButton(interaction, env) {
   await env.SITE_STATE.delete(pendingKey);
 
   const statusLine = approved
-    ? `✅ **Validé** par <@${actorId}> — écrit dans Google Sheets`
+    ? `✅ **Validé** par <@${actorId}> — écrit dans Google Sheets${adjustStatus}`
     : `🚫 **Refusé** par <@${actorId}> — non écrit dans Google Sheets`;
 
   const nextContent = baseContent
