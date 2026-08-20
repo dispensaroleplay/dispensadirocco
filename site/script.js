@@ -193,3 +193,9 @@ window.addEventListener("resize", () => {
     setMenuOpen(false);
   }
 });
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

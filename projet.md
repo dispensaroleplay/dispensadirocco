@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-20 (perf mobile site) |
+| **Dernière mise à jour** | 2026-08-21 (polices self-host + PWA) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -62,9 +62,11 @@ Objectif métier : automatiser le suivi des **menus / stock produit** déclarés
 
 ### 3.1 Site vitrine
 
-- Page d’accueil brandée (Cormorant Garamond / Montserrat, thème sombre or)
-- Perf mobile : images compressées, polices allégées, intro désactivée, animations réduites, cache assets
+- Page d’accueil brandée (Cormorant Garamond / Montserrat self-hostées, thème sombre or)
+- PWA légère (manifest + icônes + service worker shell)
+- Perf mobile : images compressées, intro désactivée, animations réduites, cache assets
 - Sections histoire, carte, galerie, recrutement, contact
+- Crédit footer : Dev by Sundae²
 - Lien Discord « Commander »
 - Bouton **ADMIN** visible uniquement si session admin Discord
 

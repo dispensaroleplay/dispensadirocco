@@ -42,15 +42,33 @@ function redirect(location, init = {}) {
   });
 }
 
-function withStaticAssetCache(response) {
+function withStaticAssetCache(response, pathname = "") {
   if (!response || response.status !== 200) return response;
   const headers = new Headers(response.headers);
   const type = String(headers.get("Content-Type") || "").toLowerCase();
+  const path = String(pathname || "").toLowerCase();
+
+  if (path.endsWith("/sw.js") || path === "/sw.js") {
+    headers.set("Cache-Control", "no-cache");
+    headers.set("Service-Worker-Allowed", "/");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    });
+  }
+
+  if (path.endsWith(".webmanifest") || type.includes("manifest")) {
+    headers.set("Content-Type", "application/manifest+json; charset=utf-8");
+    headers.set("Cache-Control", "public, max-age=86400");
+  }
+
   const longLived =
     type.startsWith("image/") ||
     type.includes("javascript") ||
     type.includes("css") ||
     type.includes("font") ||
+    type.includes("woff") ||
     type.includes("webp");
   if (longLived) {
     headers.set(
@@ -1944,7 +1962,7 @@ export default {
       });
     }
 
-    return withStaticAssetCache(await env.ASSETS.fetch(request));
+    return withStaticAssetCache(await env.ASSETS.fetch(request), url.pathname);
   },
 
   async scheduled(event, env, ctx) {
