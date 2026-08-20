@@ -42,6 +42,34 @@ function redirect(location, init = {}) {
   });
 }
 
+function withStaticAssetCache(response) {
+  if (!response || response.status !== 200) return response;
+  const headers = new Headers(response.headers);
+  const type = String(headers.get("Content-Type") || "").toLowerCase();
+  const longLived =
+    type.startsWith("image/") ||
+    type.includes("javascript") ||
+    type.includes("css") ||
+    type.includes("font") ||
+    type.includes("webp");
+  if (longLived) {
+    headers.set(
+      "Cache-Control",
+      "public, max-age=604800, stale-while-revalidate=86400"
+    );
+  } else if (type.includes("text/html")) {
+    headers.set(
+      "Cache-Control",
+      "public, max-age=300, stale-while-revalidate=86400"
+    );
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 function hexToBytes(hex) {
   if (!hex || hex.length % 2 !== 0) return new Uint8Array();
 
