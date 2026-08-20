@@ -1,24 +1,22 @@
 # La Dispensa Di Rocco — Workers
 
-Site vitrine + API de statut Discord, déployé en Cloudflare Workers.
+Site vitrine + API Discord / production, déployé en Cloudflare Workers.
+
+**Document principal du projet (contexte, fonctionnalités, roadmap) :** [`projet.md`](projet.md)  
+À lire et **mettre à jour** à chaque avancée.
 
 Structure :
 
 ```text
-site/index.html
-site/404.html
-site/styles.css
-site/script.js
-site/assets/
-worker.js
+site/                 # assets publics (vitrine + formulaire admin)
+worker.js             # logique Worker
 wrangler.jsonc
-package.json
+scripts/              # enregistrement commandes Discord
+SETUP-WORKERS.md      # secrets & procédures
+projet.md             # contexte / features / roadmap
 ```
 
-- Fichiers publics dans **`site/`** (dossier dédié, isolé de `.git` / `node_modules`)
-- Worker : `worker.js` — config : `wrangler.jsonc`
-
-Le binding KV `SITE_STATE` et le secret `DISCORD_PUBLIC_KEY` se configurent dans le dashboard Cloudflare (`keep_vars: true`).
+Le binding KV `SITE_STATE` et les secrets se configurent dans le dashboard Cloudflare (`keep_vars: true`).
 
 ## Cloudflare Workers Builds
 
@@ -30,4 +28,4 @@ Le binding KV `SITE_STATE` et le secret `DISCORD_PUBLIC_KEY` se configurent dans
 
 Le Worker dans le dashboard doit s’appeler **dispensadirocco**.
 
-API production (Discord + Google Sheets) : `POST /api/production` — voir **SETUP-WORKERS.md**.
+API production : `POST /api/production` — détails dans **SETUP-WORKERS.md** et **projet.md**.
