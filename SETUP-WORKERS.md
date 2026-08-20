@@ -140,7 +140,8 @@ Copie la **Public Key** de **ta app** → secret `ADMIN_DISCORD_PUBLIC_KEY`.
 | `/admin-add` | `user` (User) |
 | `/admin-remove` | `user` (User) |
 | `/admin-list` | aucune |
-| `/recap` | `periode` (optionnel) : `Semaine en cours` / `Semaine precedente` |
+| `/recap` | `periode` (optionnel) : `Semaine en cours` / `Semaine precedente` ; `employe` (optionnel) |
+| `/stats` | `periode` (optionnel) : aujourd'hui / semaine en cours / précédente ; `employe` (optionnel) |
 
 ### Secrets Cloudflare (récap)
 
@@ -185,6 +186,12 @@ Dans Discord, en tant qu'admin bootstrap :
 - `/admin-remove @personne` — retire l'accès
 - `/admin-list` — liste les admins
 - `/recap` — poste le récap production (option `periode` : semaine en cours par défaut, ou précédente ; option `employe` pour filtrer un nom)
+- `/stats` — stats éphémères (jour / semaine) sans poster dans le salon récap
+
+Variables utiles :
+
+- `PRODUCTION_STAFF_ROLE_ID` — ID du rôle mentionné à chaque nouvelle déclaration
+- `PRODUCTION_PENDING_REMINDER_HOURS` — délai avant rappel (défaut `6`)
 
 Réenregistrer les commandes après modification de `scripts/commands.guild.json` :
 
@@ -449,6 +456,11 @@ Flux :
 
 1. Déclaration → message Discord avec boutons **vert Valider** / **rouge Refuser** (rien dans Sheets encore)
 2. **Valider** → le bot écrit la ligne dans Google Sheets (`Validé = Oui`)
-3. **Refuser** → rien n’est écrit dans Sheets
+3. **Refuser** → rien n’est écrit dans Sheets  
+4. Sur **Valider**, la colonne **Commentaire** reçoit `Validé par {pseudo Discord}`
+
+Mention staff : variable `PRODUCTION_STAFF_ROLE_ID` (ID du rôle à pinger).
+
+Rappel auto : chaque heure, si une déclaration attend depuis plus de `PRODUCTION_PENDING_REMINDER_HOURS` (défaut 6 h), alerte dans le salon alertes (une seule fois).
 
 Nécessite `DISCORD_BOT_TOKEN` + rôle `DISCORD_BOT_ROLE_IDS`. Données en attente stockées 7 jours en KV.

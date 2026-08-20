@@ -616,6 +616,44 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
     return discordDeferEphemeral();
   }
 
+  if (command === "stats") {
+    const periodRaw = String(getSlashOption(interaction, "periode") || "day").toLowerCase();
+    const period =
+      periodRaw === "previous" || periodRaw === "current" || periodRaw === "day"
+        ? periodRaw
+        : "day";
+    const employe = String(getSlashOption(interaction, "employe") || "").trim();
+    const applicationId = env.DISCORD_CLIENT_ID || env.ADMIN_DISCORD_APPLICATION_ID;
+
+    if (!applicationId) {
+      return discordEphemeral(
+        "DISCORD_CLIENT_ID manquant : impossible de finaliser la commande /stats."
+      );
+    }
+
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const result = await buildProductionStatsContent(env, period, employe);
+          await editOriginalInteraction(
+            applicationId,
+            interaction.token,
+            result.content
+          );
+        } catch (error) {
+          console.error("[production] /stats error:", error?.message || error);
+          await editOriginalInteraction(
+            applicationId,
+            interaction.token,
+            `❌ Impossible de calculer les stats : ${error?.message || "unknown"}`
+          );
+        }
+      })()
+    );
+
+    return discordDeferEphemeral();
+  }
+
   if (command === "admin-list") {
     const effective = await getAdminAllowlist(env);
     if (!effective.length) {
@@ -1040,6 +1078,17 @@ function currentIsoWeekRangeParis(now = new Date()) {
   return { start: thisMonday, end: today };
 }
 
+function todayRangeParis(now = new Date()) {
+  const today = parisYmdParts(now);
+  return { start: today, end: today };
+}
+
+function resolveStatsRange(period, now = new Date()) {
+  if (period === "day") return todayRangeParis(now);
+  if (period === "previous") return previousIsoWeekRangeParis(now);
+  return currentIsoWeekRangeParis(now);
+}
+
 function resolveRecapRange(period, now = new Date()) {
   return period === "current"
     ? currentIsoWeekRangeParis(now)
@@ -1128,6 +1177,99 @@ async function runWeeklyProductionRecap(env, period = "previous", employeFilter 
     summary,
     content
   };
+}
+
+async function buildProductionStatsContent(env, period = "day", employeFilter = "") {
+  const range = resolveStatsRange(period);
+  const rows = await readProductionSheetRows(env);
+  const summary = buildWeeklyProductionRecap(rows, range, employeFilter);
+
+  const periodLabel =
+    period === "day"
+      ? "du jour"
+      : period === "previous"
+        ? "semaine précédente"
+        : "semaine en cours";
+  const periodDates = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
+  const filterLabel = summary.employeFilter
+    ? ` · employé **${summary.employeFilter}**`
+    : "";
+
+  if (!summary.ranked.length) {
+    return {
+      content:
+        `📈 **Stats production ${periodLabel}** (${periodDates})${filterLabel}\n` +
+        `Aucune déclaration validée sur la période.`
+    };
+  }
+
+  const lines = summary.ranked
+    .slice(0, 15)
+    .map(([name, total], index) => `${index + 1}. **${name}** — ${Math.round(total)} menus`);
+
+  return {
+    content:
+      `📈 **Stats production ${periodLabel}** (${periodDates})${filterLabel}\n` +
+      `Déclarations : **${summary.entries}** · Menus : **${Math.round(summary.menusTotal)}**\n\n` +
+      lines.join("\n")
+  };
+}
+
+async function runPendingProductionReminders(env) {
+  if (!env.SITE_STATE) return { reminded: 0 };
+
+  const hoursRaw = Number(env.PRODUCTION_PENDING_REMINDER_HOURS || 6);
+  const hours = Number.isFinite(hoursRaw) && hoursRaw > 0 ? hoursRaw : 6;
+  const thresholdMs = hours * 60 * 60 * 1000;
+  const now = Date.now();
+  let reminded = 0;
+  let cursor;
+
+  do {
+    const listed = await env.SITE_STATE.list({
+      prefix: "production_pending:",
+      cursor,
+      limit: 100
+    });
+
+    for (const key of listed.keys) {
+      const raw = await env.SITE_STATE.get(key.name);
+      if (!raw) continue;
+
+      let pending;
+      try {
+        pending = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+
+      const createdAt = Date.parse(pending.createdAt || "");
+      if (!Number.isFinite(createdAt)) continue;
+      if (now - createdAt < thresholdMs) continue;
+      if (pending.remindedAt) continue;
+
+      const ageHours = Math.floor((now - createdAt) / (60 * 60 * 1000));
+      const link = pending.discordUrl || key.name.replace("production_pending:", "");
+      await postProductionAlert(
+        env,
+        `⏰ **Rappel validation production**\n` +
+          `**${pending.nom || "?"}** — ${pending.stock ?? "?"} menus\n` +
+          `En attente depuis ~**${ageHours} h**\n` +
+          `${link}`
+      );
+
+      pending.remindedAt = new Date().toISOString();
+      await env.SITE_STATE.put(key.name, JSON.stringify(pending), {
+        expirationTtl: PRODUCTION_PENDING_TTL
+      });
+      reminded += 1;
+    }
+
+    cursor = listed.list_complete ? undefined : listed.cursor;
+  } while (cursor);
+
+  console.log("[production] pending reminders sent:", reminded);
+  return { reminded };
 }
 
 async function handleProductionRecap(request, env) {
@@ -1265,6 +1407,15 @@ async function handleProductionValidateButton(interaction, env) {
     return discordEphemeral("Données de déclaration invalides.");
   }
 
+  const actor =
+    interaction.member?.user?.global_name ||
+    interaction.member?.user?.username ||
+    interaction.user?.global_name ||
+    interaction.user?.username ||
+    actorId;
+
+  const commentaire = approved ? `Validé par ${actor}` : "";
+
   const sheetRow = [
     pending.date || parisDateString(),
     pending.nom,
@@ -1272,7 +1423,7 @@ async function handleProductionValidateButton(interaction, env) {
     "Oui",
     "BOT",
     pending.discordUrl || "",
-    ""
+    commentaire
   ];
 
   if (approved) {
@@ -1315,8 +1466,11 @@ async function handleProductionValidateButton(interaction, env) {
 }
 
 async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
+  const staffRoleId = String(env.PRODUCTION_STAFF_ROLE_ID || "").trim();
+  const mention = /^\d+$/.test(staffRoleId) ? `<@&${staffRoleId}> ` : "";
+
   const content =
-    `Nouvelle déclaration de production\n` +
+    `${mention}Nouvelle déclaration de production\n` +
     `Nom : ${nom}\n` +
     `Stock produit : ${stock}`;
 
@@ -1341,12 +1495,20 @@ async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
     throw new Error("DISCORD_GUILD_ID manquant");
   }
 
+  const payload = {
+    content,
+    components,
+    allowed_mentions: /^\d+$/.test(staffRoleId)
+      ? { parse: [], roles: [staffRoleId] }
+      : { parse: [] }
+  };
+
   const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
   let response;
 
   if (proofFile instanceof File || proofFile instanceof Blob) {
     const body = new FormData();
-    body.append("payload_json", JSON.stringify({ content, components }));
+    body.append("payload_json", JSON.stringify(payload));
     const filename =
       (proofFile instanceof File && proofFile.name) || "preuve.png";
     body.append("files[0]", proofFile, filename);
@@ -1362,7 +1524,7 @@ async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
         Authorization: `Bot ${botToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ content, components })
+      body: JSON.stringify(payload)
     });
   }
 
@@ -1607,12 +1769,17 @@ export default {
     ctx.waitUntil(
       (async () => {
         try {
+          if (event.cron === "0 * * * *") {
+            await runPendingProductionReminders(env);
+            return;
+          }
+
           await runWeeklyProductionRecap(env);
         } catch (error) {
-          console.error("[production] scheduled recap error:", error?.message || error);
+          console.error("[production] scheduled error:", error?.message || error);
           await postProductionAlert(
             env,
-            `❌ **Alerte récap hebdo (cron)**\n${error?.message || "unknown"}`
+            `❌ **Alerte cron production**\n${error?.message || "unknown"}`
           );
         }
       })()

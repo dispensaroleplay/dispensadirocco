@@ -54,5 +54,37 @@
         "required": false
       }
     ]
+  },
+  {
+    "name": "stats",
+    "description": "Voir les stats production (sans poster)",
+    "options": [
+      {
+        "name": "periode",
+        "description": "Periode a calculer",
+        "type": 3,
+        "required": false,
+        "choices": [
+          {
+            "name": "Aujourd'hui",
+            "value": "day"
+          },
+          {
+            "name": "Semaine en cours",
+            "value": "current"
+          },
+          {
+            "name": "Semaine precedente",
+            "value": "previous"
+          }
+        ]
+      },
+      {
+        "name": "employe",
+        "description": "Filtrer sur un nom d'employe (ex. Julien)",
+        "type": 3,
+        "required": false
+      }
+    ]
   }
 ]
