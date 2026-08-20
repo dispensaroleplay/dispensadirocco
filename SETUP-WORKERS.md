@@ -140,6 +140,7 @@ Copie la **Public Key** de **ta app** → secret `ADMIN_DISCORD_PUBLIC_KEY`.
 | `/admin-add` | `user` (User) |
 | `/admin-remove` | `user` (User) |
 | `/admin-list` | aucune |
+| `/recap` | `periode` (optionnel) : `Semaine en cours` / `Semaine precedente` |
 
 ### Secrets Cloudflare (récap)
 
@@ -183,6 +184,16 @@ Dans Discord, en tant qu'admin bootstrap :
 - `/admin-add @personne` — autorise l'accès ADMIN
 - `/admin-remove @personne` — retire l'accès
 - `/admin-list` — liste les admins
+- `/recap` — poste le récap production (option `periode` : semaine en cours par défaut, ou précédente)
+
+Réenregistrer les commandes après modification de `scripts/commands.guild.json` :
+
+```powershell
+$env:DISCORD_BOT_TOKEN="TON_TOKEN_BOT"
+node scripts/register-discord-commands.mjs
+```
+
+(`DISCORD_BOT_TOKEN` = token Bot de l'app admin, onglet Bot — pas le Client Secret.)
 
 Liste stockée dans KV `SITE_STATE` → clé `admin_allowlist`.
 

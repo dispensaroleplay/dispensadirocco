@@ -512,6 +512,38 @@ function discordEphemeral(content) {
   });
 }
 
+function discordDeferEphemeral() {
+  return json({
+    type: 5,
+    data: { flags: 64 }
+  });
+}
+
+async function editOriginalInteraction(applicationId, interactionToken, content) {
+  if (!applicationId || !interactionToken) return false;
+
+  const response = await fetch(
+    `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content })
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    console.error(
+      "[discord] edit interaction failed:",
+      response.status,
+      data.message || "unknown"
+    );
+    return false;
+  }
+
+  return true;
+}
+
 function getInteractionUserId(interaction) {
   return interaction.member?.user?.id || interaction.user?.id || "";
 }
@@ -520,7 +552,7 @@ function getSlashOption(interaction, name) {
   return interaction.data?.options?.find(option => option.name === name)?.value;
 }
 
-async function handleAdminSlashCommand(interaction, env) {
+async function handleAdminSlashCommand(interaction, env, ctx) {
   const guildId = interaction.guild_id || "";
   if (guildId !== env.DISCORD_GUILD_ID) {
     return discordEphemeral("Cette commande n'est pas autorisée ici.");
@@ -538,6 +570,46 @@ async function handleAdminSlashCommand(interaction, env) {
   const command = interaction.data?.name || "";
   const stored = await readAdminAllowlist(env);
   const bootstrap = new Set(getBootstrapAdmins(env));
+
+  if (command === "recap") {
+    const periodRaw = String(getSlashOption(interaction, "periode") || "current").toLowerCase();
+    const period = periodRaw === "previous" ? "previous" : "current";
+    const applicationId = env.DISCORD_CLIENT_ID || env.ADMIN_DISCORD_APPLICATION_ID;
+
+    if (!applicationId) {
+      return discordEphemeral(
+        "DISCORD_CLIENT_ID manquant : impossible de finaliser la commande /recap."
+      );
+    }
+
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const result = await runWeeklyProductionRecap(env, period);
+          const label =
+            period === "current" ? "semaine en cours" : "semaine précédente";
+          await editOriginalInteraction(
+            applicationId,
+            interaction.token,
+            `✅ Récap **${label}** posté.\n\n${result.content}`
+          );
+        } catch (error) {
+          console.error("[production] /recap error:", error?.message || error);
+          await postProductionAlert(
+            env,
+            `❌ **Alerte /recap**\n${error?.message || "unknown"}`
+          );
+          await editOriginalInteraction(
+            applicationId,
+            interaction.token,
+            `❌ Impossible de générer le récap : ${error?.message || "unknown"}`
+          );
+        }
+      })()
+    );
+
+    return discordDeferEphemeral();
+  }
 
   if (command === "admin-list") {
     const effective = await getAdminAllowlist(env);
@@ -590,10 +662,10 @@ async function handleAdminSlashCommand(interaction, env) {
     return discordEphemeral(`🔒 <@${targetId}> n'a plus accès à ADMIN.`);
   }
 
-  return discordEphemeral("Commande admin inconnue.");
+  return discordEphemeral("Commande inconnue.");
 }
 
-async function handleDiscordInteraction(request, env) {
+async function handleDiscordInteraction(request, env, ctx) {
   if (!env.DISCORD_PUBLIC_KEY && !env.ADMIN_DISCORD_PUBLIC_KEY) {
     return json(
       { error: "DISCORD_PUBLIC_KEY or ADMIN_DISCORD_PUBLIC_KEY must be configured" },
@@ -630,7 +702,7 @@ async function handleDiscordInteraction(request, env) {
   }
 
   if (interaction.type === 2) {
-    return handleAdminSlashCommand(interaction, env);
+    return handleAdminSlashCommand(interaction, env, ctx);
   }
 
   if (interaction.type !== 3) {
@@ -1301,7 +1373,7 @@ async function handleProductionDeclaration(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (
@@ -1359,7 +1431,7 @@ export default {
       request.method === "POST" &&
       url.pathname === "/discord/interactions"
     ) {
-      return handleDiscordInteraction(request, env);
+      return handleDiscordInteraction(request, env, ctx);
     }
 
     if (

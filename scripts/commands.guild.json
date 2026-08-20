@@ -26,5 +26,27 @@
   {
     "name": "admin-list",
     "description": "Lister les admins autorises"
+  },
+  {
+    "name": "recap",
+    "description": "Poster le recap production Discord (Sheets)",
+    "options": [
+      {
+        "name": "periode",
+        "description": "Semaine a resumer",
+        "type": 3,
+        "required": false,
+        "choices": [
+          {
+            "name": "Semaine en cours",
+            "value": "current"
+          },
+          {
+            "name": "Semaine precedente",
+            "value": "previous"
+          }
+        ]
+      }
+    ]
   }
 ]
