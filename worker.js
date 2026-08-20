@@ -1322,94 +1322,59 @@ async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
 
   const guildId = env.DISCORD_GUILD_ID;
   const channelId = String(env.PRODUCTION_DISCORD_CHANNEL_ID || "").trim();
-  const botToken = env.DISCORD_BOT_TOKEN;
+  const botToken = String(env.DISCORD_BOT_TOKEN || "").trim();
   const components = productionValidateComponents();
 
-  let data;
-
-  if (botToken && /^\d+$/.test(channelId)) {
-    const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
-    let response;
-
-    if (proofFile instanceof File || proofFile instanceof Blob) {
-      const body = new FormData();
-      body.append(
-        "payload_json",
-        JSON.stringify({ content, components })
-      );
-      const filename =
-        (proofFile instanceof File && proofFile.name) || "preuve.png";
-      body.append("files[0]", proofFile, filename);
-      response = await fetch(endpoint, {
-        method: "POST",
-        headers: { Authorization: `Bot ${botToken}` },
-        body
-      });
-    } else {
-      response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ content, components })
-      });
-    }
-
-    data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.id) {
-      throw new Error(
-        `Discord bot message failed (${response.status}): ${data.message || "unknown"}`
-      );
-    }
-  } else {
-    const webhookUrl = env.DISCORD_PRODUCTION_WEBHOOK_URL;
-    if (!webhookUrl) {
-      throw new Error(
-        "DISCORD_BOT_TOKEN + PRODUCTION_DISCORD_CHANNEL_ID (recommandé) ou DISCORD_PRODUCTION_WEBHOOK_URL manquant"
-      );
-    }
-
-    const url = new URL(webhookUrl);
-    url.searchParams.set("wait", "true");
-
-    let response;
-    if (proofFile instanceof File || proofFile instanceof Blob) {
-      const body = new FormData();
-      body.append("payload_json", JSON.stringify({ content }));
-      const filename =
-        (proofFile instanceof File && proofFile.name) || "preuve.png";
-      body.append("files[0]", proofFile, filename);
-      response = await fetch(url.toString(), { method: "POST", body });
-    } else {
-      response = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content })
-      });
-    }
-
-    data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.id) {
-      throw new Error(
-        `Discord webhook failed (${response.status}): ${data.message || "unknown"}`
-      );
-    }
-  }
-
-  const resolvedChannelId =
-    /^\d+$/.test(channelId)
-      ? channelId
-      : String(data.channel_id || "").trim();
-
-  if (!guildId || !resolvedChannelId) {
+  if (!botToken) {
     throw new Error(
-      "DISCORD_GUILD_ID missing, or PRODUCTION_DISCORD_CHANNEL_ID is invalid (must be numeric salon ID)"
+      "DISCORD_BOT_TOKEN manquant (secret Cloudflare) — requis pour les boutons Valider/Refuser"
     );
   }
 
-  const discordUrl = `https://discord.com/channels/${guildId}/${resolvedChannelId}/${data.id}`;
-  return { messageId: data.id, channelId: resolvedChannelId, discordUrl };
+  if (!/^\d+$/.test(channelId)) {
+    throw new Error(
+      "PRODUCTION_DISCORD_CHANNEL_ID invalide — colle l'ID numérique du salon #production-whebooks"
+    );
+  }
+
+  if (!guildId) {
+    throw new Error("DISCORD_GUILD_ID manquant");
+  }
+
+  const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
+  let response;
+
+  if (proofFile instanceof File || proofFile instanceof Blob) {
+    const body = new FormData();
+    body.append("payload_json", JSON.stringify({ content, components }));
+    const filename =
+      (proofFile instanceof File && proofFile.name) || "preuve.png";
+    body.append("files[0]", proofFile, filename);
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bot ${botToken}` },
+      body
+    });
+  } else {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ content, components })
+    });
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.id) {
+    throw new Error(
+      `Discord bot message failed (${response.status}): ${data.message || JSON.stringify(data)}`
+    );
+  }
+
+  const discordUrl = `https://discord.com/channels/${guildId}/${channelId}/${data.id}`;
+  return { messageId: data.id, channelId, discordUrl };
 }
 
 async function buildProductionDedupKey(nom, stock) {
