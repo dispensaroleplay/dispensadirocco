@@ -87,9 +87,10 @@ Objectif métier : automatiser le suivi des **menus / stock produit** déclarés
 
 Champs :
 
-- Nom
+- Nom prénom (liste déroulante employés)
 - Stock produit
 - Une ou plusieurs images (max 10 × 8 Mo) — mobile : Galerie / Appareil photo, barre d’envoi sticky, safe-area
+- Crédit bas de page : Sundae² et l.ktv
 
 **Flux :**
 
@@ -199,13 +200,13 @@ node scripts/register-discord-commands.mjs
 - [x] Mention rôle staff (si configuré)
 - [x] Peaufinage mobile du formulaire admin (`/admin/app`)
 - [x] Fix menu hamburger (zone tactile + couches) et chargement site (intro / reveal)
+- [x] Liste déroulante des employés sur le formulaire admin
 
 ### À faire / idées prioritaires
 
 - [ ] **Commentaire libre** sur le formulaire (ex. foodtruck) fusionné avec « Validé par … »
 - [ ] **`/pending`** — lister les déclarations en attente Oui/Non
 - [ ] **Timeout auto** — après X jours : alerte forte ou refus / archivage
-- [ ] **Contrôle des noms** — warning si employé absent de la liste Sheets
 - [ ] **`/export`** — CSV de la période en pièce jointe Discord
 - [ ] Domaine custom final + migration complète Discord endpoints (si pas déjà fait)
 

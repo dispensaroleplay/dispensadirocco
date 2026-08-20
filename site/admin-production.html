@@ -199,7 +199,8 @@
       .field > label span { color: var(--red); }
 
       input[type="text"],
-      input[type="number"] {
+      input[type="number"],
+      select {
         width: 100%;
         min-height: 52px;
         padding: 0 16px;
@@ -213,8 +214,29 @@
         transition: border-color 160ms ease, box-shadow 160ms ease;
       }
 
+      select {
+        padding-right: 44px;
+        appearance: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--gold-light) 50%),
+          linear-gradient(135deg, var(--gold-light) 50%, transparent 50%);
+        background-position:
+          calc(100% - 22px) calc(50% - 3px),
+          calc(100% - 16px) calc(50% - 3px);
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+      }
+
+      select option {
+        color: #1a140c;
+        background: #f4efe6;
+      }
+
       input[type="text"]:focus,
-      input[type="number"]:focus {
+      input[type="number"]:focus,
+      select:focus {
         border-color: rgba(201, 150, 69, 0.55);
         box-shadow: 0 0 0 3px rgba(201, 150, 69, 0.12);
       }
@@ -495,16 +517,21 @@
 
         <form id="production-form">
           <div class="field">
-            <label for="name">Nom <span>*</span></label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              autocomplete="name"
-              enterkeyhint="next"
-              autocapitalize="words"
-            />
+            <label for="name">Nom prénom <span>*</span></label>
+            <select id="name" name="name" required>
+              <option value="" disabled selected>Choisir son nom</option>
+              <option value="David Rocco">David Rocco</option>
+              <option value="Jayson Smith">Jayson Smith</option>
+              <option value="Tony Michelli">Tony Michelli</option>
+              <option value="Francis Lebergeron">Francis Lebergeron</option>
+              <option value="Dante Michelli">Dante Michelli</option>
+              <option value="Julien Phantom">Julien Phantom</option>
+              <option value="Eneo Merliot">Eneo Merliot</option>
+              <option value="Thomas Lemasson">Thomas Lemasson</option>
+              <option value="Mathieu Lemoine">Mathieu Lemoine</option>
+              <option value="James Taylor">James Taylor</option>
+              <option value="Mehdi Tulipe">Mehdi Tulipe</option>
+            </select>
           </div>
 
           <div class="field">
