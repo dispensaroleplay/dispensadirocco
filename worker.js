@@ -11,6 +11,8 @@
 
 const OPEN_ID = "restaurant_open";
 const CLOSED_ID = "restaurant_closed";
+const PROD_VALIDATE_OUI = "prod_validate:oui";
+const PROD_VALIDATE_NON = "prod_validate:non";
 const ADMIN_ALLOWLIST_KEY = "admin_allowlist";
 const SESSION_COOKIE = "dispensa_admin";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
@@ -574,6 +576,7 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
   if (command === "recap") {
     const periodRaw = String(getSlashOption(interaction, "periode") || "current").toLowerCase();
     const period = periodRaw === "previous" ? "previous" : "current";
+    const employe = String(getSlashOption(interaction, "employe") || "").trim();
     const applicationId = env.DISCORD_CLIENT_ID || env.ADMIN_DISCORD_APPLICATION_ID;
 
     if (!applicationId) {
@@ -585,13 +588,14 @@ async function handleAdminSlashCommand(interaction, env, ctx) {
     ctx.waitUntil(
       (async () => {
         try {
-          const result = await runWeeklyProductionRecap(env, period);
+          const result = await runWeeklyProductionRecap(env, period, employe);
           const label =
             period === "current" ? "semaine en cours" : "semaine précédente";
+          const who = employe ? ` · employé **${employe}**` : "";
           await editOriginalInteraction(
             applicationId,
             interaction.token,
-            `✅ Récap **${label}** posté.\n\n${result.content}`
+            `✅ Récap **${label}**${who} posté.\n\n${result.content}`
           );
         } catch (error) {
           console.error("[production] /recap error:", error?.message || error);
@@ -709,6 +713,12 @@ async function handleDiscordInteraction(request, env, ctx) {
     return discordEphemeral("Interaction non prise en charge.");
   }
 
+  const customId = interaction.data?.custom_id || "";
+
+  if (customId === PROD_VALIDATE_OUI || customId === PROD_VALIDATE_NON) {
+    return handleProductionValidateButton(interaction, env);
+  }
+
   const guildId = interaction.guild_id || "";
   const channelId =
     interaction.channel_id ||
@@ -733,7 +743,6 @@ async function handleDiscordInteraction(request, env, ctx) {
     );
   }
 
-  const customId = interaction.data?.custom_id;
   let status = null;
 
   if (customId === OPEN_ID) status = "open";
@@ -1036,10 +1045,11 @@ function resolveRecapRange(period, now = new Date()) {
     : previousIsoWeekRangeParis(now);
 }
 
-function buildWeeklyProductionRecap(rows, range) {
+function buildWeeklyProductionRecap(rows, range, employeFilter = "") {
   const totals = new Map();
   let entries = 0;
   let menusTotal = 0;
+  const filter = String(employeFilter || "").trim().toLowerCase();
 
   for (const row of rows) {
     const date = parseSheetDate(row[0]);
@@ -1050,6 +1060,8 @@ function buildWeeklyProductionRecap(rows, range) {
     const menus = Number(String(row[2] || "").replace(/\s/g, "").replace(",", "."));
     if (!employe || !Number.isFinite(menus)) continue;
 
+    if (filter && !employe.toLowerCase().includes(filter)) continue;
+
     entries += 1;
     menusTotal += menus;
     totals.set(employe, (totals.get(employe) || 0) + menus);
@@ -1057,16 +1069,24 @@ function buildWeeklyProductionRecap(rows, range) {
 
   const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"));
 
-  return { entries, menusTotal, ranked };
+  return {
+    entries,
+    menusTotal,
+    ranked,
+    employeFilter: String(employeFilter || "").trim()
+  };
 }
 
 function formatWeeklyRecapMessage(range, summary, period = "previous") {
   const periodLabel = period === "current" ? "semaine en cours" : "hebdo";
   const periodDates = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
+  const filterLabel = summary.employeFilter
+    ? ` · employé **${summary.employeFilter}**`
+    : "";
 
   if (!summary.ranked.length) {
     return (
-      `📊 **Récap production ${periodLabel}** (${periodDates})\n` +
+      `📊 **Récap production ${periodLabel}** (${periodDates})${filterLabel}\n` +
       `Aucune déclaration trouvée sur la période.`
     );
   }
@@ -1076,16 +1096,16 @@ function formatWeeklyRecapMessage(range, summary, period = "previous") {
   );
 
   return (
-    `📊 **Récap production ${periodLabel}** (${periodDates})\n` +
+    `📊 **Récap production ${periodLabel}** (${periodDates})${filterLabel}\n` +
     `Déclarations : **${summary.entries}** · Menus : **${Math.round(summary.menusTotal)}**\n\n` +
     lines.join("\n")
   );
 }
 
-async function runWeeklyProductionRecap(env, period = "previous") {
+async function runWeeklyProductionRecap(env, period = "previous", employeFilter = "") {
   const range = resolveRecapRange(period);
   const rows = await readProductionSheetRows(env);
-  const summary = buildWeeklyProductionRecap(rows, range);
+  const summary = buildWeeklyProductionRecap(rows, range, employeFilter);
   const content = formatWeeklyRecapMessage(range, summary, period);
 
   const webhook =
@@ -1098,8 +1118,15 @@ async function runWeeklyProductionRecap(env, period = "previous") {
     throw new Error("Impossible de poster le récap Discord");
   }
 
-  console.log("[production] weekly recap posted", period, content);
-  return { ok: true, period, range, summary, content };
+  console.log("[production] weekly recap posted", period, employeFilter || "*", content);
+  return {
+    ok: true,
+    period,
+    employeFilter: summary.employeFilter,
+    range,
+    summary,
+    content
+  };
 }
 
 async function handleProductionRecap(request, env) {
@@ -1117,10 +1144,12 @@ async function handleProductionRecap(request, env) {
 
   const url = new URL(request.url);
   let period = String(url.searchParams.get("period") || "previous").toLowerCase();
+  let employe = String(url.searchParams.get("employe") || "").trim();
 
   try {
     const body = await request.clone().json().catch(() => null);
     if (body?.period) period = String(body.period).toLowerCase();
+    if (body?.employe) employe = String(body.employe).trim();
   } catch {
     // body optionnel
   }
@@ -1133,7 +1162,7 @@ async function handleProductionRecap(request, env) {
   }
 
   try {
-    const result = await runWeeklyProductionRecap(env, period);
+    const result = await runWeeklyProductionRecap(env, period, employe);
     return json(result);
   } catch (error) {
     console.error("[production] recap error:", error?.message || error);
@@ -1151,58 +1180,255 @@ async function handleProductionRecap(request, env) {
   }
 }
 
-async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
-  const webhookUrl = env.DISCORD_PRODUCTION_WEBHOOK_URL;
-  if (!webhookUrl) {
-    throw new Error("DISCORD_PRODUCTION_WEBHOOK_URL is missing");
+function productionValidateComponents(disabled = false, validatedLabel = "") {
+  if (disabled) {
+    return [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 2,
+            label: validatedLabel || "Traité",
+            custom_id: "prod_validate:done",
+            disabled: true
+          }
+        ]
+      }
+    ];
   }
 
+  return [
+    {
+      type: 1,
+      components: [
+        {
+          type: 2,
+          style: 3,
+          label: "Valider",
+          custom_id: PROD_VALIDATE_OUI
+        },
+        {
+          type: 2,
+          style: 4,
+          label: "Refuser",
+          custom_id: PROD_VALIDATE_NON
+        }
+      ]
+    }
+  ];
+}
+
+function sheetTabName(range) {
+  const raw = String(range || "Feuille1!A:G");
+  const bang = raw.indexOf("!");
+  return bang === -1 ? raw : raw.slice(0, bang);
+}
+
+async function updateProductionValidatedByMessageId(env, messageId, validated) {
+  const spreadsheetId = normalizeSpreadsheetId(env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  const range = productionSheetRange(env);
+  const tab = sheetTabName(range);
+
+  if (!spreadsheetId) {
+    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
+  }
+
+  const rows = await readProductionSheetRows(env);
+  let rowNumber = -1;
+
+  for (let i = 0; i < rows.length; i++) {
+    const preuve = String(rows[i][5] || "");
+    if (preuve.includes(String(messageId))) {
+      rowNumber = i + 1;
+      break;
+    }
+  }
+
+  if (rowNumber < 1) {
+    throw new Error("Ligne Sheets introuvable pour ce message Discord");
+  }
+
+  const accessToken = await createGoogleAccessToken(env);
+  const cellRange = `${tab}!D${rowNumber}`;
+  const endpoint =
+    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}` +
+    `/values/${encodeURIComponent(cellRange)}?valueInputOption=USER_ENTERED`;
+
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ values: [[validated]] })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `Sheets update failed (${response.status}): ${data.error?.message || "unknown"}`
+    );
+  }
+
+  return { rowNumber, validated };
+}
+
+async function handleProductionValidateButton(interaction, env) {
+  const guildId = interaction.guild_id || "";
+  if (guildId !== env.DISCORD_GUILD_ID) {
+    return discordEphemeral("Ce bouton n'est pas autorisé ici.");
+  }
+
+  if (!(await canUseBotCommands(interaction, env))) {
+    const roleConfigured = getBotRoleIds(env).length > 0;
+    return discordEphemeral(
+      roleConfigured
+        ? "Tu n'as pas le rôle requis pour valider une production."
+        : "Tu n'as pas la permission de valider une production."
+    );
+  }
+
+  const customId = interaction.data?.custom_id || "";
+  const validated = customId === PROD_VALIDATE_OUI ? "Oui" : "Non";
+  const messageId = interaction.message?.id || "";
+  const actorId = getInteractionUserId(interaction);
+  const baseContent = String(interaction.message?.content || "").trim();
+
+  if (!messageId) {
+    return discordEphemeral("Message Discord introuvable.");
+  }
+
+  try {
+    await updateProductionValidatedByMessageId(env, messageId, validated);
+  } catch (error) {
+    console.error("[production] validate error:", error?.message || error);
+    await postProductionAlert(
+      env,
+      `❌ **Alerte validation production**\nMessage \`${messageId}\`\n${error?.message || "unknown"}`
+    );
+    return discordEphemeral(
+      `❌ Impossible de mettre à jour le Sheet : ${error?.message || "unknown"}`
+    );
+  }
+
+  const statusLine =
+    validated === "Oui"
+      ? `✅ **Validé** par <@${actorId}>`
+      : `🚫 **Refusé** par <@${actorId}>`;
+
+  const nextContent = baseContent
+    ? `${baseContent}\n\n${statusLine}`
+    : statusLine;
+
+  return json({
+    type: 7,
+    data: {
+      content: nextContent,
+      components: productionValidateComponents(
+        true,
+        validated === "Oui" ? "Validé" : "Refusé"
+      )
+    }
+  });
+}
+
+async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
   const content =
     `Nouvelle déclaration de production\n` +
     `Nom : ${nom}\n` +
     `Stock produit : ${stock}`;
 
-  const url = new URL(webhookUrl);
-  url.searchParams.set("wait", "true");
-
-  let response;
-  if (proofFile instanceof File || proofFile instanceof Blob) {
-    const body = new FormData();
-    body.append("payload_json", JSON.stringify({ content }));
-    const filename =
-      (proofFile instanceof File && proofFile.name) || "preuve.png";
-    body.append("files[0]", proofFile, filename);
-    response = await fetch(url.toString(), { method: "POST", body });
-  } else {
-    response = await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content })
-    });
-  }
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.id) {
-    throw new Error(
-      `Discord webhook failed (${response.status}): ${data.message || "unknown"}`
-    );
-  }
-
   const guildId = env.DISCORD_GUILD_ID;
-  const configuredChannelId = String(env.PRODUCTION_DISCORD_CHANNEL_ID || "").trim();
-  const channelId =
-    /^\d+$/.test(configuredChannelId)
-      ? configuredChannelId
+  const channelId = String(env.PRODUCTION_DISCORD_CHANNEL_ID || "").trim();
+  const botToken = env.DISCORD_BOT_TOKEN;
+  const components = productionValidateComponents();
+
+  let data;
+
+  if (botToken && /^\d+$/.test(channelId)) {
+    const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
+    let response;
+
+    if (proofFile instanceof File || proofFile instanceof Blob) {
+      const body = new FormData();
+      body.append(
+        "payload_json",
+        JSON.stringify({ content, components })
+      );
+      const filename =
+        (proofFile instanceof File && proofFile.name) || "preuve.png";
+      body.append("files[0]", proofFile, filename);
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bot ${botToken}` },
+        body
+      });
+    } else {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content, components })
+      });
+    }
+
+    data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.id) {
+      throw new Error(
+        `Discord bot message failed (${response.status}): ${data.message || "unknown"}`
+      );
+    }
+  } else {
+    const webhookUrl = env.DISCORD_PRODUCTION_WEBHOOK_URL;
+    if (!webhookUrl) {
+      throw new Error(
+        "DISCORD_BOT_TOKEN + PRODUCTION_DISCORD_CHANNEL_ID (recommandé) ou DISCORD_PRODUCTION_WEBHOOK_URL manquant"
+      );
+    }
+
+    const url = new URL(webhookUrl);
+    url.searchParams.set("wait", "true");
+
+    let response;
+    if (proofFile instanceof File || proofFile instanceof Blob) {
+      const body = new FormData();
+      body.append("payload_json", JSON.stringify({ content }));
+      const filename =
+        (proofFile instanceof File && proofFile.name) || "preuve.png";
+      body.append("files[0]", proofFile, filename);
+      response = await fetch(url.toString(), { method: "POST", body });
+    } else {
+      response = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content })
+      });
+    }
+
+    data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.id) {
+      throw new Error(
+        `Discord webhook failed (${response.status}): ${data.message || "unknown"}`
+      );
+    }
+  }
+
+  const resolvedChannelId =
+    /^\d+$/.test(channelId)
+      ? channelId
       : String(data.channel_id || "").trim();
 
-  if (!guildId || !channelId) {
+  if (!guildId || !resolvedChannelId) {
     throw new Error(
       "DISCORD_GUILD_ID missing, or PRODUCTION_DISCORD_CHANNEL_ID is invalid (must be numeric salon ID)"
     );
   }
 
-  const discordUrl = `https://discord.com/channels/${guildId}/${channelId}/${data.id}`;
-  return { messageId: data.id, channelId, discordUrl };
+  const discordUrl = `https://discord.com/channels/${guildId}/${resolvedChannelId}/${data.id}`;
+  return { messageId: data.id, channelId: resolvedChannelId, discordUrl };
 }
 
 async function buildProductionDedupKey(nom, stock) {
@@ -1271,7 +1497,7 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
     date,
     nom,
     String(stock),
-    "Oui",
+    "En attente",
     "BOT",
     discord.discordUrl,
     ""

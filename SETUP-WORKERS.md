@@ -184,7 +184,7 @@ Dans Discord, en tant qu'admin bootstrap :
 - `/admin-add @personne` — autorise l'accès ADMIN
 - `/admin-remove @personne` — retire l'accès
 - `/admin-list` — liste les admins
-- `/recap` — poste le récap production (option `periode` : semaine en cours par défaut, ou précédente)
+- `/recap` — poste le récap production (option `periode` : semaine en cours par défaut, ou précédente ; option `employe` pour filtrer un nom)
 
 Réenregistrer les commandes après modification de `scripts/commands.guild.json` :
 
@@ -322,7 +322,7 @@ Flux : source → Worker → webhook Discord (`#production-whebooks`) → append
 | Date | date du jour `DD/MM/YYYY` (Europe/Paris) |
 | Employé | `nom` |
 | Menus créés | `stock` |
-| Validé | `Oui` |
+| Validé | `En attente` (puis Oui/Non via boutons Discord) |
 | Responsable | `BOT` |
 | Preuve / lien Discord | lien du message posté |
 | Commentaire | vide |
@@ -441,3 +441,15 @@ Invoke-RestMethod -Method POST `
 |-----|------|------|
 | `DISCORD_ALERT_WEBHOOK_URL` | Secret (optionnel) | Salon staff pour les erreurs |
 | `DISCORD_RECAP_WEBHOOK_URL` | Secret (optionnel) | Salon pour le récap hebdo |
+| `DISCORD_BOT_TOKEN` | Secret | Token Bot (messages avec boutons Valider/Refuser + register commandes) |
+
+### Boutons Valider / Refuser
+
+Les nouvelles déclarations partent via le **Bot** (`DISCORD_BOT_TOKEN`) dans `#production-whebooks` avec boutons :
+
+- **Valider** → colonne Validé = `Oui`
+- **Refuser** → colonne Validé = `Non`
+
+Le Sheet démarre à `En attente`. Réservé au rôle `DISCORD_BOT_ROLE_IDS`.
+
+Sans `DISCORD_BOT_TOKEN`, fallback webhook (sans boutons).

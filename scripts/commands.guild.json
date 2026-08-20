@@ -46,6 +46,12 @@
             "value": "previous"
           }
         ]
+      },
+      {
+        "name": "employe",
+        "description": "Filtrer sur un nom d'employe (ex. Julien)",
+        "type": 3,
+        "required": false
       }
     ]
   }
