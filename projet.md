@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-20 (fix menu mobile + chargement) |
+| **Dernière mise à jour** | 2026-08-20 (fix envoi preuves admin + crédit) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |

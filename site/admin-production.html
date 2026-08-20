@@ -394,6 +394,16 @@
       #form-status[data-state="error"] { color: var(--red); }
       #form-status[data-state="success"] { color: var(--green); }
 
+      .credit {
+        margin: 22px 0 0;
+        color: rgba(170, 163, 152, 0.72);
+        font-size: 0.72rem;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        text-align: center;
+        line-height: 1.5;
+      }
+
       .mobile-dock {
         display: none;
       }
@@ -526,7 +536,6 @@
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,image/webp,image/*"
                 multiple
-                required
                 tabindex="-1"
                 aria-hidden="true"
               />
@@ -550,6 +559,8 @@
           <p id="form-status" role="status"></p>
         </form>
       </section>
+
+      <p class="credit">Sundae² et l.ktv</p>
     </main>
 
     <div class="mobile-dock" aria-hidden="false">
@@ -596,12 +607,6 @@
           labelMobile.textContent = text;
         };
 
-        const syncInputFiles = () => {
-          const dt = new DataTransfer();
-          for (const file of selected) dt.items.add(file);
-          proof.files = dt.files;
-        };
-
         const renderPreview = () => {
           for (const url of urls) URL.revokeObjectURL(url);
           urls = [];
@@ -610,7 +615,6 @@
           if (!selected.length) {
             preview.classList.remove("show");
             title.textContent = "Ajouter des preuves";
-            syncInputFiles();
             return;
           }
 
@@ -641,7 +645,6 @@
           });
 
           preview.classList.add("show");
-          syncInputFiles();
         };
 
         const validateAndMerge = (incoming) => {
@@ -671,14 +674,17 @@
         pickGallery.addEventListener("click", () => proof.click());
         pickCamera.addEventListener("click", () => proofCamera.click());
 
+        // Copier les File puis vider l'input : l'aperçu / l'envoi passent par `selected`.
         proof.addEventListener("change", () => {
-          validateAndMerge(proof.files);
+          const files = [...proof.files];
           proof.value = "";
+          validateAndMerge(files);
         });
 
         proofCamera.addEventListener("change", () => {
-          validateAndMerge(proofCamera.files);
+          const files = [...proofCamera.files];
           proofCamera.value = "";
+          validateAndMerge(files);
         });
 
         form.addEventListener("submit", async (event) => {
