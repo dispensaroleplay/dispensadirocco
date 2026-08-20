@@ -222,6 +222,10 @@ node scripts/register-discord-commands.mjs
 - [ ] Historique KV des validations
 - [ ] Tests automatisés Worker (validation parsing, mapping Sheets)
 
+### Abandonné / hors scope
+
+- Badge **OUVERT / FERMÉ** visible sur le site vitrine (le pilotage Discord / API reste ; pas d’affichage public demandé)
+
 ---
 
 ## 7. Règles de maintenance de ce fichier
