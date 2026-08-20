@@ -727,8 +727,13 @@ async function createGoogleAccessToken(env) {
 }
 
 async function appendProductionSheetRow(env, row) {
-  const spreadsheetId = env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  let spreadsheetId = String(env.GOOGLE_SHEETS_SPREADSHEET_ID || "").trim();
   const range = env.GOOGLE_SHEETS_RANGE || "Feuille1!A:G";
+
+  // Accepte une URL Sheets collée par erreur et n'en garde que l'ID.
+  const fromUrl = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (fromUrl) spreadsheetId = fromUrl[1];
+  spreadsheetId = spreadsheetId.split("/")[0].split("?")[0];
 
   if (!spreadsheetId) {
     throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is missing");
@@ -787,12 +792,15 @@ async function postProductionDiscordMessage(env, nom, stock) {
   }
 
   const guildId = env.DISCORD_GUILD_ID;
+  const configuredChannelId = String(env.PRODUCTION_DISCORD_CHANNEL_ID || "").trim();
   const channelId =
-    env.PRODUCTION_DISCORD_CHANNEL_ID || data.channel_id || "";
+    /^\d+$/.test(configuredChannelId)
+      ? configuredChannelId
+      : String(data.channel_id || "").trim();
 
   if (!guildId || !channelId) {
     throw new Error(
-      "DISCORD_GUILD_ID or PRODUCTION_DISCORD_CHANNEL_ID is missing"
+      "DISCORD_GUILD_ID missing, or PRODUCTION_DISCORD_CHANNEL_ID is invalid (must be numeric salon ID)"
     );
   }
 
