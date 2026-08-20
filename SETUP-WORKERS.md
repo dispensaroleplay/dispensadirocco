@@ -384,3 +384,13 @@ Réponse succès :
 Anti-doublon : même `nom` + `stock` à moins d’**1 heure** d’écart → `duplicate: true`, pas de 2ᵉ ligne Sheets. Après 1 h, une nouvelle déclaration est acceptée.
 
 Branchez la source existante (formulaire stocks / script) sur cet endpoint **à la place** d’un post Discord direct.
+
+### Formulaire admin (`/admin/app`)
+
+Le formulaire sur `https://dispensadirocco.ladispensadirocco.workers.dev/admin/app` envoie déjà un `POST /api/submit` (session admin requise) avec :
+
+- `name` (texte)
+- `stock` (nombre)
+- `proof` (image)
+
+Le Worker enregistre alors Discord + Google Sheets (plus besoin du webhook Discord côté app Pages).

@@ -441,7 +441,53 @@ async function handleAdminSubmit(request, env) {
   const auth = await requireAdminSession(request, env);
   if (auth.error) return auth.error;
 
-  return proxyStocksRequest(request, env, "/api/submit");
+  let formData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return json(
+      { ok: false, error: "Impossible de lire le formulaire." },
+      { status: 400 }
+    );
+  }
+
+  const nom = String(formData.get("name") || formData.get("nom") || "").trim();
+  const stockRaw = formData.get("stock");
+  const stock = typeof stockRaw === "number" ? stockRaw : Number(stockRaw);
+  const proof = formData.get("proof");
+
+  if (!nom || !Number.isFinite(stock) || stock < 0) {
+    return json(
+      {
+        ok: false,
+        error: "Merci de renseigner un nom et un stock produit valides."
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!(proof instanceof File) || proof.size === 0) {
+    return json(
+      { ok: false, error: "Une image de preuve est obligatoire." },
+      { status: 400 }
+    );
+  }
+
+  if (!String(proof.type || "").startsWith("image/")) {
+    return json(
+      { ok: false, error: "Le fichier de preuve doit être une image." },
+      { status: 400 }
+    );
+  }
+
+  if (proof.size > 8 * 1024 * 1024) {
+    return json(
+      { ok: false, error: "L'image ne doit pas dépasser 8 Mo." },
+      { status: 400 }
+    );
+  }
+
+  return recordProductionDeclaration(env, { nom, stock, proofFile: proof });
 }
 
 async function handleAdminGate(request, env) {
@@ -764,7 +810,7 @@ async function appendProductionSheetRow(env, row) {
   return data;
 }
 
-async function postProductionDiscordMessage(env, nom, stock) {
+async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
   const webhookUrl = env.DISCORD_PRODUCTION_WEBHOOK_URL;
   if (!webhookUrl) {
     throw new Error("DISCORD_PRODUCTION_WEBHOOK_URL is missing");
@@ -778,11 +824,21 @@ async function postProductionDiscordMessage(env, nom, stock) {
   const url = new URL(webhookUrl);
   url.searchParams.set("wait", "true");
 
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content })
-  });
+  let response;
+  if (proofFile instanceof File || proofFile instanceof Blob) {
+    const body = new FormData();
+    body.append("payload_json", JSON.stringify({ content }));
+    const filename =
+      (proofFile instanceof File && proofFile.name) || "preuve.png";
+    body.append("files[0]", proofFile, filename);
+    response = await fetch(url.toString(), { method: "POST", body });
+  } else {
+    response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content })
+    });
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.id) {
@@ -820,54 +876,7 @@ async function buildProductionDedupKey(nom, stock) {
   return `production_dedup:${hex}`;
 }
 
-async function handleProductionDeclaration(request, env) {
-  if (!env.PRODUCTION_API_TOKEN) {
-    console.error("[production] PRODUCTION_API_TOKEN is not configured");
-    return json(
-      { ok: false, error: "PRODUCTION_API_TOKEN is not configured" },
-      { status: 503 }
-    );
-  }
-
-  const providedToken = readProductionToken(request);
-  if (!providedToken || providedToken !== env.PRODUCTION_API_TOKEN) {
-    return json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json(
-      { ok: false, error: "Invalid JSON body" },
-      { status: 400 }
-    );
-  }
-
-  const nom = String(body?.nom ?? body?.name ?? "").trim();
-  const stockRaw = body?.stock ?? body?.stock_produit ?? body?.menus;
-  const stock = typeof stockRaw === "number" ? stockRaw : Number(stockRaw);
-
-  if (!nom) {
-    return json(
-      {
-        ok: false,
-        error: "Impossible d'enregistrer la production : nom manquant."
-      },
-      { status: 400 }
-    );
-  }
-
-  if (!Number.isFinite(stock) || stock < 0) {
-    return json(
-      {
-        ok: false,
-        error: "Impossible d'enregistrer la production : quantité manquante."
-      },
-      { status: 400 }
-    );
-  }
-
+async function recordProductionDeclaration(env, { nom, stock, proofFile = null }) {
   const date = parisDateString();
   const dedupKey = await buildProductionDedupKey(nom, stock);
 
@@ -899,7 +908,7 @@ async function handleProductionDeclaration(request, env) {
 
   let discord;
   try {
-    discord = await postProductionDiscordMessage(env, nom, stock);
+    discord = await postProductionDiscordMessage(env, nom, stock, proofFile);
   } catch (error) {
     console.error("[production] Discord error:", error?.message || error);
     return json(
@@ -956,6 +965,57 @@ async function handleProductionDeclaration(request, env) {
     discordUrl: discord.discordUrl,
     sheetRow
   });
+}
+
+async function handleProductionDeclaration(request, env) {
+  if (!env.PRODUCTION_API_TOKEN) {
+    console.error("[production] PRODUCTION_API_TOKEN is not configured");
+    return json(
+      { ok: false, error: "PRODUCTION_API_TOKEN is not configured" },
+      { status: 503 }
+    );
+  }
+
+  const providedToken = readProductionToken(request);
+  if (!providedToken || providedToken !== env.PRODUCTION_API_TOKEN) {
+    return json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json(
+      { ok: false, error: "Invalid JSON body" },
+      { status: 400 }
+    );
+  }
+
+  const nom = String(body?.nom ?? body?.name ?? "").trim();
+  const stockRaw = body?.stock ?? body?.stock_produit ?? body?.menus;
+  const stock = typeof stockRaw === "number" ? stockRaw : Number(stockRaw);
+
+  if (!nom) {
+    return json(
+      {
+        ok: false,
+        error: "Impossible d'enregistrer la production : nom manquant."
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!Number.isFinite(stock) || stock < 0) {
+    return json(
+      {
+        ok: false,
+        error: "Impossible d'enregistrer la production : quantité manquante."
+      },
+      { status: 400 }
+    );
+  }
+
+  return recordProductionDeclaration(env, { nom, stock });
 }
 
 export default {
