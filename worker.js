@@ -1220,12 +1220,6 @@ function productionValidateComponents(disabled = false, validatedLabel = "") {
   ];
 }
 
-function sheetTabName(range) {
-  const raw = String(range || "Feuille1!A:G");
-  const bang = raw.indexOf("!");
-  return bang === -1 ? raw : raw.slice(0, bang);
-}
-
 async function handleProductionValidateButton(interaction, env) {
   const guildId = interaction.guild_id || "";
   if (guildId !== env.DISCORD_GUILD_ID) {
