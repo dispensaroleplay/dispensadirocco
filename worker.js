@@ -437,7 +437,57 @@ async function handleAdminStocksApp(request, env) {
   const url = new URL(request.url);
   let stocksPath = url.pathname.slice(prefix.length) || "/";
 
-  return proxyStocksRequest(request, env, stocksPath);
+  // Multi-images : on sert notre app.js à la place de celui de Pages.
+  if (stocksPath === "/app.js") {
+    const assetUrl = new URL("/admin-app.js", request.url);
+    const asset = await env.ASSETS.fetch(new Request(assetUrl, request));
+    const headers = new Headers(asset.headers);
+    headers.set("Cache-Control", "no-store");
+    return new Response(asset.body, {
+      status: asset.status,
+      statusText: asset.statusText,
+      headers
+    });
+  }
+
+  const response = await proxyStocksRequest(request, env, stocksPath);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("text/html")) {
+    return response;
+  }
+
+  let html = await response.text();
+  html = html
+    .replace(
+      /(<input[^>]*\bid="proof"[^>]*)(\/?>)/i,
+      (match, start, end) =>
+        /\bmultiple\b/i.test(start) ? match : `${start} multiple${end}`
+    )
+    .replace(
+      />Ajouter une image</gi,
+      ">Ajouter une ou plusieurs images<"
+    );
+
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store");
+  headers.delete("content-length");
+
+  return new Response(html, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+function collectProofFiles(formData) {
+  const files = [];
+  for (const key of ["proof", "proofs", "preuve", "images"]) {
+    for (const value of formData.getAll(key)) {
+      if (value instanceof File && value.size > 0) files.push(value);
+    }
+  }
+  return files;
 }
 
 async function handleAdminSubmit(request, env) {
@@ -457,7 +507,7 @@ async function handleAdminSubmit(request, env) {
   const nom = String(formData.get("name") || formData.get("nom") || "").trim();
   const stockRaw = formData.get("stock");
   const stock = typeof stockRaw === "number" ? stockRaw : Number(stockRaw);
-  const proof = formData.get("proof");
+  const proofs = collectProofFiles(formData);
 
   if (!nom || !Number.isFinite(stock) || stock < 0) {
     return json(
@@ -469,28 +519,37 @@ async function handleAdminSubmit(request, env) {
     );
   }
 
-  if (!(proof instanceof File) || proof.size === 0) {
+  if (!proofs.length) {
     return json(
-      { ok: false, error: "Une image de preuve est obligatoire." },
+      { ok: false, error: "Au moins une image de preuve est obligatoire." },
       { status: 400 }
     );
   }
 
-  if (!String(proof.type || "").startsWith("image/")) {
+  if (proofs.length > 10) {
     return json(
-      { ok: false, error: "Le fichier de preuve doit être une image." },
+      { ok: false, error: "Maximum 10 images par déclaration." },
       { status: 400 }
     );
   }
 
-  if (proof.size > 8 * 1024 * 1024) {
-    return json(
-      { ok: false, error: "L'image ne doit pas dépasser 8 Mo." },
-      { status: 400 }
-    );
+  for (const proof of proofs) {
+    if (!String(proof.type || "").startsWith("image/")) {
+      return json(
+        { ok: false, error: "Chaque fichier de preuve doit être une image." },
+        { status: 400 }
+      );
+    }
+
+    if (proof.size > 8 * 1024 * 1024) {
+      return json(
+        { ok: false, error: "Chaque image ne doit pas dépasser 8 Mo." },
+        { status: 400 }
+      );
+    }
   }
 
-  return recordProductionDeclaration(env, { nom, stock, proofFile: proof });
+  return recordProductionDeclaration(env, { nom, stock, proofFiles: proofs });
 }
 
 async function handleAdminGate(request, env) {
@@ -1482,14 +1541,18 @@ async function handleProductionValidateButton(interaction, env) {
   });
 }
 
-async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
+async function postProductionDiscordMessage(env, nom, stock, proofFiles = []) {
   const staffRoleId = String(env.PRODUCTION_STAFF_ROLE_ID || "").trim();
   const mention = /^\d+$/.test(staffRoleId) ? `<@&${staffRoleId}> ` : "";
+  const files = Array.isArray(proofFiles)
+    ? proofFiles.filter(file => file instanceof File || file instanceof Blob)
+    : [];
 
   const content =
     `${mention}Nouvelle déclaration de production\n` +
     `Nom : ${nom}\n` +
-    `Stock produit : ${stock}`;
+    `Stock produit : ${stock}` +
+    (files.length > 1 ? `\nPreuves : ${files.length} images` : "");
 
   const guildId = env.DISCORD_GUILD_ID;
   const channelId = String(env.PRODUCTION_DISCORD_CHANNEL_ID || "").trim();
@@ -1523,12 +1586,14 @@ async function postProductionDiscordMessage(env, nom, stock, proofFile = null) {
   const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
   let response;
 
-  if (proofFile instanceof File || proofFile instanceof Blob) {
+  if (files.length) {
     const body = new FormData();
     body.append("payload_json", JSON.stringify(payload));
-    const filename =
-      (proofFile instanceof File && proofFile.name) || "preuve.png";
-    body.append("files[0]", proofFile, filename);
+    files.forEach((file, index) => {
+      const filename =
+        (file instanceof File && file.name) || `preuve-${index + 1}.png`;
+      body.append(`files[${index}]`, file, filename);
+    });
     response = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: `Bot ${botToken}` },
@@ -1568,9 +1633,14 @@ async function buildProductionDedupKey(nom, stock) {
   return `production_dedup:${hex}`;
 }
 
-async function recordProductionDeclaration(env, { nom, stock, proofFile = null }) {
+async function recordProductionDeclaration(env, { nom, stock, proofFile = null, proofFiles = null }) {
   const date = parisDateString();
   const dedupKey = await buildProductionDedupKey(nom, stock);
+  const files = Array.isArray(proofFiles) && proofFiles.length
+    ? proofFiles
+    : proofFile
+      ? [proofFile]
+      : [];
 
   if (env.SITE_STATE) {
     const already = await env.SITE_STATE.get(dedupKey);
@@ -1601,7 +1671,7 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
 
   let discord;
   try {
-    discord = await postProductionDiscordMessage(env, nom, stock, proofFile);
+    discord = await postProductionDiscordMessage(env, nom, stock, files);
   } catch (error) {
     console.error("[production] Discord error:", error?.message || error);
     await postProductionAlert(
@@ -1627,6 +1697,7 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
         stock,
         date,
         discordUrl: discord.discordUrl,
+        proofCount: files.length,
         createdAt: new Date().toISOString()
       }),
       { expirationTtl: PRODUCTION_PENDING_TTL }
@@ -1644,14 +1715,16 @@ async function recordProductionDeclaration(env, { nom, stock, proofFile = null }
   }
 
   const message =
-    `⏳ Déclaration postée sur Discord — en attente de validation (Oui/Non) — ${stock} × ${nom}`;
+    `⏳ Déclaration postée sur Discord — en attente de validation (Oui/Non) — ${stock} × ${nom}` +
+    (files.length > 1 ? ` · ${files.length} images` : "");
   console.log("[production]", message, discord.discordUrl);
 
   return json({
     ok: true,
     pending: true,
     message,
-    discordUrl: discord.discordUrl
+    discordUrl: discord.discordUrl,
+    proofCount: files.length
   });
 }
 

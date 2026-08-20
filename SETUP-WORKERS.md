@@ -411,7 +411,7 @@ Le formulaire sur `https://dispensadirocco.ladispensadirocco.workers.dev/admin/a
 
 - `name` (texte)
 - `stock` (nombre)
-- `proof` (image)
+- `proof` (une ou plusieurs images, max 10 × 8 Mo)
 
 Le Worker enregistre alors Discord + Google Sheets (plus besoin du webhook Discord côté app Pages).
 
