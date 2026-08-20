@@ -437,112 +437,24 @@ async function handleAdminStocksApp(request, env) {
   const url = new URL(request.url);
   let stocksPath = url.pathname.slice(prefix.length) || "/";
 
-  const loadAdminAppJs = async () => {
-    const asset = await env.ASSETS.fetch(new Request(new URL("/admin-app.js", request.url)));
-    if (!asset.ok) return null;
-    return asset.text();
-  };
-
-  // Multi-images : on sert notre app.js à la place de celui de Pages.
-  if (stocksPath === "/app.js") {
-    const source = await loadAdminAppJs();
-    return new Response(source || "// admin-app.js missing\n", {
-      status: source ? 200 : 500,
-      headers: {
-        "Content-Type": "application/javascript; charset=utf-8",
-        "Cache-Control": "no-store"
-      }
+  // Formulaire dédié (évite le CSS/JS stocks qui cassait l'upload photo).
+  if (
+    request.method === "GET" &&
+    (stocksPath === "/" || stocksPath === "" || stocksPath === "/index.html")
+  ) {
+    const page = await env.ASSETS.fetch(
+      new Request(new URL("/admin-production.html", request.url))
+    );
+    const headers = new Headers(page.headers);
+    headers.set("Cache-Control", "no-store");
+    return new Response(page.body, {
+      status: page.status,
+      statusText: page.statusText,
+      headers
     });
   }
 
-  const response = await proxyStocksRequest(request, env, stocksPath);
-  const contentType = response.headers.get("content-type") || "";
-
-  if (!contentType.includes("text/html")) {
-    return response;
-  }
-
-  let html = await response.text();
-  const adminJs = await loadAdminAppJs();
-
-  const uploadFixCss = `
-<style id="admin-upload-fix">
-  .upload-zone { position: relative !important; overflow: hidden !important; }
-  .upload-zone input[type="file"],
-  #proof {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    opacity: 0 !important;
-    clip: auto !important;
-    clip-path: none !important;
-    overflow: visible !important;
-    cursor: pointer !important;
-    z-index: 30 !important;
-    font-size: 100px !important;
-    display: block !important;
-    border: 0 !important;
-  }
-</style>`;
-
-  html = html
-    .replace(
-      /<\/head>/i,
-      `${uploadFixCss}\n</head>`
-    )
-    .replace(
-      /(<input[^>]*\bid="proof"[^>]*)(\/?>)/i,
-      (match, start, end) => {
-        let next = start;
-        if (!/\bmultiple\b/i.test(next)) next += " multiple";
-        if (/accept=/i.test(next)) {
-          next = next.replace(
-            /accept=["'][^"']*["']/i,
-            'accept="image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp"'
-          );
-        } else {
-          next +=
-            ' accept="image/png,image/jpeg,image/jpg,image/webp,image/*,.png,.jpg,.jpeg,.webp"';
-        }
-        return `${next}${end}`;
-      }
-    )
-    .replace(
-      />Ajouter une image</gi,
-      ">Ajouter une ou plusieurs images<"
-    )
-    .replace(
-      /PNG, JPG ou WEBP - 8 Mo maximum/gi,
-      "PNG, JPG ou WEBP — plusieurs images possibles, 8 Mo max chacune"
-    )
-    .replace(
-      /<script[^>]*src=["']https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js["'][^>]*>\s*<\/script>\s*/gi,
-      ""
-    )
-    .replace(
-      /<div[^>]*class=["']cf-turnstile["'][^>]*><\/div>\s*/gi,
-      "<!-- turnstile disabled on admin proxy -->"
-    );
-
-  if (adminJs) {
-    html = html.replace(
-      /<script[^>]*src=["']\/?app\.js["'][^>]*>\s*<\/script>/i,
-      `<script>\n${adminJs}\n</script>`
-    );
-  }
-
-  const headers = new Headers(response.headers);
-  headers.set("Cache-Control", "no-store");
-  headers.delete("content-length");
-
-  return new Response(html, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
+  return proxyStocksRequest(request, env, stocksPath);
 }
 
 function collectProofFiles(formData) {

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr" data-submit-endpoint="/api/submit">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Déclaration de production | La Dispensa Di Rocco</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600&family=Work+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --black: #080908;
+        --paper: #fbfaf5;
+        --ink: #1c201d;
+        --muted: #667069;
+        --green: #168648;
+        --green-dark: #096334;
+        --red: #ce303b;
+        --line: rgba(28, 32, 29, 0.14);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 12% 6%, rgba(22, 134, 72, 0.15), transparent 26rem),
+          var(--black);
+        font-family: "Work Sans", sans-serif;
+      }
+      .page {
+        width: min(100% - 32px, 720px);
+        margin: 0 auto;
+        padding: 36px 0 48px;
+      }
+      .card {
+        padding: 28px;
+        background: var(--paper);
+        border-radius: 24px;
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: clamp(1.8rem, 4vw, 2.4rem);
+        font-weight: 500;
+      }
+      .sub {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-family: "DM Mono", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      label {
+        display: block;
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      label span { color: var(--red); }
+      .field { margin-bottom: 18px; }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        min-height: 50px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: white;
+        font: inherit;
+      }
+      .upload {
+        display: block;
+        padding: 22px;
+        border: 1px dashed rgba(22, 134, 72, 0.5);
+        border-radius: 14px;
+        background: #f7f5ee;
+        cursor: pointer;
+        text-align: center;
+      }
+      .upload:hover { background: #eef6f0; }
+      .upload strong { display: block; margin-bottom: 6px; }
+      .upload small { color: var(--muted); }
+      .upload input {
+        display: block;
+        width: 100%;
+        margin-top: 14px;
+      }
+      .preview {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .preview.show { display: grid; }
+      .preview img {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 24px;
+      }
+      button {
+        min-height: 50px;
+        padding: 0 22px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--green);
+        color: white;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: wait; }
+      button:hover { background: var(--green-dark); }
+      #form-status {
+        min-height: 1.4em;
+        margin-top: 14px;
+        font-size: 0.92rem;
+      }
+      #form-status[data-state="error"] { color: var(--red); }
+      #form-status[data-state="success"] { color: var(--green-dark); }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <p class="sub">La Dispensa Di Rocco</p>
+        <h1>Nouvelle déclaration</h1>
+        <form id="production-form">
+          <div class="field">
+            <label for="name">Nom <span>*</span></label>
+            <input id="name" name="name" type="text" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="stock">Stock produit <span>*</span></label>
+            <input id="stock" name="stock" type="number" min="0" step="1" required />
+          </div>
+          <div class="field">
+            <label for="proof">Preuves photo <span>*</span></label>
+            <label class="upload" for="proof">
+              <strong id="upload-title">Choisir une ou plusieurs images</strong>
+              <small>PNG, JPG, WEBP — max 10 fichiers, 8 Mo chacun</small>
+              <input
+                id="proof"
+                name="proof"
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp,image/*"
+                multiple
+                required
+              />
+            </label>
+            <div id="preview" class="preview" aria-live="polite"></div>
+          </div>
+          <div class="actions">
+            <button id="submit-button" type="submit">
+              <span id="submit-label">Envoyer la déclaration</span>
+            </button>
+          </div>
+          <p id="form-status" role="status"></p>
+        </form>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const form = document.getElementById("production-form");
+        const proof = document.getElementById("proof");
+        const title = document.getElementById("upload-title");
+        const preview = document.getElementById("preview");
+        const status = document.getElementById("form-status");
+        const button = document.getElementById("submit-button");
+        const label = document.getElementById("submit-label");
+        const maxFiles = 10;
+        const maxSize = 8 * 1024 * 1024;
+        let urls = [];
+
+        const setStatus = (message, state = "") => {
+          status.textContent = message;
+          status.dataset.state = state;
+        };
+
+        const clearPreview = () => {
+          for (const url of urls) URL.revokeObjectURL(url);
+          urls = [];
+          preview.innerHTML = "";
+          preview.classList.remove("show");
+          title.textContent = "Choisir une ou plusieurs images";
+        };
+
+        proof.addEventListener("change", () => {
+          const files = [...proof.files];
+          clearPreview();
+          if (!files.length) return;
+
+          if (files.length > maxFiles) {
+            proof.value = "";
+            setStatus("Maximum 10 images.", "error");
+            return;
+          }
+
+          for (const file of files) {
+            const okType =
+              String(file.type || "").startsWith("image/") ||
+              /\.(png|jpe?g|webp)$/i.test(file.name || "");
+            if (!okType || file.size === 0 || file.size > maxSize) {
+              proof.value = "";
+              clearPreview();
+              setStatus("Image invalide (PNG/JPG/WEBP, max 8 Mo).", "error");
+              return;
+            }
+          }
+
+          title.textContent =
+            files.length === 1
+              ? files[0].name
+              : `${files.length} images sélectionnées`;
+
+          for (const file of files) {
+            const url = URL.createObjectURL(file);
+            urls.push(url);
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = file.name;
+            preview.appendChild(img);
+          }
+          preview.classList.add("show");
+          setStatus("");
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const name = form.elements.name.value.trim();
+          const stock = form.elements.stock.value;
+          const files = [...proof.files];
+
+          if (!name || stock === "" || !files.length) {
+            setStatus("Remplis nom, stock et au moins une image.", "error");
+            return;
+          }
+
+          button.disabled = true;
+          label.textContent = "Envoi…";
+          setStatus("Transmission en cours…");
+
+          try {
+            const body = new FormData();
+            body.append("name", name);
+            body.append("stock", stock);
+            for (const file of files) body.append("proof", file);
+
+            const response = await fetch("/api/submit", {
+              method: "POST",
+              body,
+              credentials: "same-origin"
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) {
+              throw new Error(data.error || `HTTP ${response.status}`);
+            }
+
+            form.reset();
+            clearPreview();
+            setStatus(data.message || "Déclaration envoyée.", "success");
+          } catch (error) {
+            setStatus(`Échec : ${error.message || "erreur"}`, "error");
+          } finally {
+            button.disabled = false;
+            label.textContent = "Envoyer la déclaration";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
