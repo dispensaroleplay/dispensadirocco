@@ -1229,16 +1229,58 @@ function todayRangeParis(now = new Date()) {
   return { start: today, end: today };
 }
 
+function yesterdayRangeParis(now = new Date()) {
+  const day = addDaysToYmd(parisYmdParts(now), -1);
+  return { start: day, end: day };
+}
+
+function weekBeforePreviousIsoWeekRangeParis(now = new Date()) {
+  const previous = previousIsoWeekRangeParis(now);
+  return {
+    start: addDaysToYmd(previous.start, -7),
+    end: addDaysToYmd(previous.end, -7)
+  };
+}
+
 function resolveStatsRange(period, now = new Date()) {
   if (period === "day") return todayRangeParis(now);
   if (period === "previous") return previousIsoWeekRangeParis(now);
   return currentIsoWeekRangeParis(now);
 }
 
+function resolveStatsCompareRange(period, now = new Date()) {
+  if (period === "day") return yesterdayRangeParis(now);
+  if (period === "previous") return weekBeforePreviousIsoWeekRangeParis(now);
+  return previousIsoWeekRangeParis(now);
+}
+
 function resolveRecapRange(period, now = new Date()) {
   return period === "current"
     ? currentIsoWeekRangeParis(now)
     : previousIsoWeekRangeParis(now);
+}
+
+function formatMenusDelta(current, previous) {
+  const cur = Math.round(current);
+  const prev = Math.round(previous);
+  const diff = cur - prev;
+  const sign = diff > 0 ? "+" : "";
+  if (prev <= 0 && cur > 0) return `${sign}${diff} · nouveau`;
+  if (prev <= 0 && cur <= 0) return "0";
+  const pct = Math.round((diff / prev) * 100);
+  return `${sign}${diff} · ${sign}${pct}%`;
+}
+
+function formatStatsPeriodLabel(period) {
+  if (period === "day") return "du jour";
+  if (period === "previous") return "semaine précédente";
+  return "semaine en cours";
+}
+
+function formatStatsCompareLabel(period) {
+  if (period === "day") return "vs hier";
+  if (period === "previous") return "vs semaine d’avant";
+  return "vs semaine précédente";
 }
 
 function buildWeeklyProductionRecap(rows, range, employeFilter = "") {
@@ -1333,38 +1375,74 @@ async function runWeeklyProductionRecap(
 }
 
 async function buildProductionStatsContent(env, period = "day", employeFilter = "") {
-  const range = resolveStatsRange(period);
+  const now = new Date();
+  const range = resolveStatsRange(period, now);
+  const compareRange = resolveStatsCompareRange(period, now);
   const rows = await readProductionSheetRows(env);
   const summary = buildWeeklyProductionRecap(rows, range, employeFilter);
+  const previous = buildWeeklyProductionRecap(rows, compareRange, employeFilter);
 
-  const periodLabel =
-    period === "day"
-      ? "du jour"
-      : period === "previous"
-        ? "semaine précédente"
-        : "semaine en cours";
+  const periodLabel = formatStatsPeriodLabel(period);
   const periodDates = `${formatYmd(range.start)} → ${formatYmd(range.end)}`;
+  const compareDates = `${formatYmd(compareRange.start)} → ${formatYmd(compareRange.end)}`;
   const filterLabel = summary.employeFilter
     ? ` · employé **${summary.employeFilter}**`
     : "";
 
   if (!summary.ranked.length) {
+    const prevLine =
+      previous.menusTotal > 0
+        ? `\n${formatStatsCompareLabel(period)} (${compareDates}) : **${Math.round(previous.menusTotal)}** menus`
+        : "";
     return {
       content:
         `📈 **Stats production ${periodLabel}** (${periodDates})${filterLabel}\n` +
-        `Aucune déclaration validée sur la période.`
+        `Aucune déclaration validée sur la période.` +
+        prevLine
     };
   }
 
-  const lines = summary.ranked
-    .slice(0, 15)
-    .map(([name, total], index) => `${index + 1}. **${name}** — ${Math.round(total)} menus`);
+  const medals = ["🥇", "🥈", "🥉"];
+  const prevMap = new Map(previous.ranked);
+  const topLines = summary.ranked.slice(0, 10).map(([name, total], index) => {
+    const mark = medals[index] || `${index + 1}.`;
+    const prevMenus = prevMap.get(name) || 0;
+    const delta = index < 5 ? ` · ${formatMenusDelta(total, prevMenus)}` : "";
+    return `${mark} **${name}** — ${Math.round(total)} menus${delta}`;
+  });
+
+  const menusDelta = formatMenusDelta(summary.menusTotal, previous.menusTotal);
+  const entriesDelta = formatMenusDelta(summary.entries, previous.entries);
+
+  const compareBlock =
+    `\n\n📊 **${formatStatsCompareLabel(period)}** (${compareDates})\n` +
+    `Menus : **${Math.round(summary.menusTotal)}** vs **${Math.round(previous.menusTotal)}** (${menusDelta})\n` +
+    `Déclarations : **${summary.entries}** vs **${previous.entries}** (${entriesDelta})`;
+
+  let movers = "";
+  if (!summary.employeFilter && summary.ranked.length) {
+    let bestGain = null;
+    for (const [name, total] of summary.ranked) {
+      const prevMenus = prevMap.get(name) || 0;
+      const gain = total - prevMenus;
+      if (!bestGain || gain > bestGain.gain) {
+        bestGain = { name, gain, total, prevMenus };
+      }
+    }
+    if (bestGain && bestGain.gain > 0) {
+      movers =
+        `\n🔥 Plus forte hausse : **${bestGain.name}** (${formatMenusDelta(bestGain.total, bestGain.prevMenus)})`;
+    }
+  }
 
   return {
     content:
       `📈 **Stats production ${periodLabel}** (${periodDates})${filterLabel}\n` +
       `Déclarations : **${summary.entries}** · Menus : **${Math.round(summary.menusTotal)}**\n\n` +
-      lines.join("\n")
+      `🏆 **Top employés**\n` +
+      topLines.join("\n") +
+      compareBlock +
+      movers
   };
 }
 

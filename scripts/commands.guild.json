@@ -57,7 +57,7 @@
   },
   {
     "name": "stats",
-    "description": "Voir les stats production (sans poster)",
+    "description": "Stats production : top employes + comparaison periode precedente",
     "options": [
       {
         "name": "periode",

@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-21 (retrait logs suppressions) |
+| **Dernière mise à jour** | 2026-08-21 (/stats enrichi) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -115,7 +115,7 @@ Anti-doublon : même nom + stock &lt; 1 h.
 | Commande | Comportement |
 |----------|----------------|
 | `/recap` | Récap semaine (en cours / précédente), filtre `employe` optionnel — réponse **publique dans le salon** où la commande est lancée |
-| `/stats` | Stats jour / semaine — réponse publique dans le salon |
+| `/stats` | Stats jour / semaine : **top employés**, comparaison période précédente, plus forte hausse — réponse publique dans le salon |
 | `/admin-*` | Gestion allowlist admin — réponse publique dans le salon |
 
 | Salon / webhook | Usage |
@@ -207,6 +207,7 @@ node scripts/register-discord-commands.mjs
 - [x] Peaufinage mobile du formulaire admin (`/admin/app`)
 - [x] Fix menu hamburger (zone tactile + couches) et chargement site (intro / reveal)
 - [x] Liste déroulante des employés sur le formulaire admin
+- [x] `/stats` enrichi (top + comparaison période précédente)
 
 ### À faire / idées prioritaires
 
