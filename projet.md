@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-21 (logs suppression via audit logs CF) |
+| **Dernière mise à jour** | 2026-08-21 (retrait logs suppressions) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -44,14 +44,13 @@ Objectif métier : automatiser le suivi des **menus / stock produit** déclarés
           │
           ├─► Google Sheets (onglet Production + Stock)
           ├─► Bot Discord interactions (messages + boutons)
-          ├─► Webhooks (récap / alertes)
-          └─► Audit logs → salon logs suppressions (cron 5 min)
+          └─► Webhooks (récap / alertes)
 ```
 
 | Couche | Rôle |
 |--------|------|
 | `site/` | Assets publics (HTML/CSS/JS/images) |
-| `worker.js` | Routage, auth, Discord interactions, Sheets, cron, audit-log deletes |
+| `worker.js` | Routage, auth, Discord interactions, Sheets, cron |
 | `wrangler.jsonc` | Config Worker, KV, vars, crons |
 | `scripts/` | Enregistrement des commandes slash Discord |
 | `SETUP-WORKERS.md` | Guide opérationnel secrets / Discord / Sheets |
@@ -124,14 +123,6 @@ Anti-doublon : même nom + stock &lt; 1 h.
 | Production | Déclarations + boutons |
 | Alertes (`DISCORD_ALERT_WEBHOOK_URL`) | Erreurs + rappels pending |
 | Récap (`DISCORD_RECAP_WEBHOOK_URL`) | Récap **cron** du lundi |
-| Logs suppressions (`DISCORD_DELETE_LOG_CHANNEL_ID`) | Cron 5 min via **audit logs** (salon / auteur / qui a supprimé — **sans contenu**) |
-
-### 3.5bis Logs de suppression (Cloudflare)
-
-- Cron `*/5 * * * *` → lit les audit logs `MESSAGE_DELETE`
-- Cursor KV pour éviter les doublons / flood au 1er run
-- Pas de Gateway : le **texte du message** n’est pas récupérable
-- Permission bot : **View Audit Log** + écrire dans le salon logs
 
 ### 3.6 Automatisations (cron)
 
@@ -139,7 +130,6 @@ Anti-doublon : même nom + stock &lt; 1 h.
 |------|--------|
 | `0 6 * * 1` (lundi 06:00 UTC) | Récap semaine précédente → webhook récap |
 | `0 * * * *` (chaque heure) | Rappel si déclaration pending &gt; `PRODUCTION_PENDING_REMINDER_HOURS` (défaut 6 h), 1 fois |
-| `*/5 * * * *` | Logs suppressions messages (audit Discord → salon logs) |
 
 ### 3.7 Google Sheets
 
@@ -217,7 +207,6 @@ node scripts/register-discord-commands.mjs
 - [x] Peaufinage mobile du formulaire admin (`/admin/app`)
 - [x] Fix menu hamburger (zone tactile + couches) et chargement site (intro / reveal)
 - [x] Liste déroulante des employés sur le formulaire admin
-- [x] Logs suppression messages via audit logs Cloudflare (sans contenu)
 
 ### À faire / idées prioritaires
 
@@ -236,7 +225,7 @@ node scripts/register-discord-commands.mjs
 ### Abandonné / hors scope
 
 - Badge **OUVERT / FERMÉ** visible sur le site vitrine (le pilotage Discord / API reste ; pas d’affichage public demandé)
-- Logs suppression **avec contenu** via Gateway hors Cloudflare (trop lourd / hors contrainte CF)
+- Logs de suppression de messages (Gateway ou audit logs Cloudflare)
 
 ---
 

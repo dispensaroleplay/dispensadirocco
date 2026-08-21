@@ -484,14 +484,3 @@ Mention staff : variable `PRODUCTION_STAFF_ROLE_ID` (ID du rôle à pinger).
 Rappel auto : chaque heure, si une déclaration attend depuis plus de `PRODUCTION_PENDING_REMINDER_HOURS` (défaut 6 h), alerte dans le salon alertes (une seule fois).
 
 Nécessite `DISCORD_BOT_TOKEN` + rôle `DISCORD_BOT_ROLE_IDS`. Données en attente stockées 7 jours en KV.
-
-## Logs de suppression de messages (Cloudflare only)
-
-Sans Gateway Discord, le Worker lit les **audit logs** toutes les **5 minutes** et poste dans le salon :
-
-`DISCORD_DELETE_LOG_CHANNEL_ID` = `1540326524484583465`
-
-Chaque entrée indique : salon, auteur du message, qui a supprimé.  
-**Le contenu du message n’est pas disponible** (limitation Discord sans Gateway).
-
-Prérequis bot : permission **View Audit Log** + droit d’écrire dans le salon de logs.

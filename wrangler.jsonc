@@ -25,8 +25,7 @@
     "ADMIN_DISCORD_IDS": "606028135904968714",
     "DISCORD_BOT_ROLE_IDS": "1530016795740868748",
     "GOOGLE_SHEETS_RANGE": "Production!A:G",
-    "GOOGLE_STOCK_ADJUST_RANGE": "Stock!A11:F",
-    "DISCORD_DELETE_LOG_CHANNEL_ID": "1540326524484583465"
+    "GOOGLE_STOCK_ADJUST_RANGE": "Stock!A11:F"
   },
   "observability": {
     "enabled": true
@@ -34,8 +33,7 @@
   "triggers": {
     "crons": [
       "0 6 * * 1",
-      "0 * * * *",
-      "*/5 * * * *"
+      "0 * * * *"
     ]
   },
   "keep_vars": true
