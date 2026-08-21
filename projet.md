@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Dernière mise à jour** | 2026-08-21 (polices self-host + PWA) |
+| **Dernière mise à jour** | 2026-08-21 (logs suppression Discord Gateway) |
 | **Repo** | `dispensadirocco` (Worker Cloudflare) |
 | **URL prod** | `https://dispensadirocco.ladispensadirocco.workers.dev` |
 | **Worker** | `dispensadirocco` |
@@ -42,15 +42,19 @@ Objectif métier : automatiser le suivi des **menus / stock produit** déclarés
 │  + KV SITE_STATE    │
 └─────────┬───────────┘
           │
-          ├─► Google Sheets (onglet Production)
-          ├─► Bot Discord (messages + boutons Valider/Refuser)
+          ├─► Google Sheets (onglet Production + Stock)
+          ├─► Bot Discord interactions (messages + boutons)
           └─► Webhooks (récap / alertes)
+
+Companion (hors Worker) :
+  discord-gateway/  → Gateway 24/7 → logs suppressions → salon logs
 ```
 
 | Couche | Rôle |
 |--------|------|
 | `site/` | Assets publics (HTML/CSS/JS/images) |
-| `worker.js` | Routage, auth, Discord, Sheets, cron |
+| `worker.js` | Routage, auth, Discord interactions, Sheets, cron |
+| `discord-gateway/` | Bot Gateway : logs de suppression de messages |
 | `wrangler.jsonc` | Config Worker, KV, vars, crons |
 | `scripts/` | Enregistrement des commandes slash Discord |
 | `SETUP-WORKERS.md` | Guide opérationnel secrets / Discord / Sheets |
@@ -123,6 +127,14 @@ Anti-doublon : même nom + stock &lt; 1 h.
 | Production | Déclarations + boutons |
 | Alertes (`DISCORD_ALERT_WEBHOOK_URL`) | Erreurs + rappels pending |
 | Récap (`DISCORD_RECAP_WEBHOOK_URL`) | Récap **cron** du lundi |
+| Logs suppressions (`1540326524484583465`) | Gateway `discord-gateway/` — contenu + auteur + salon + qui a supprimé |
+
+### 3.5bis Logs de suppression (Gateway)
+
+- Process Node séparé : [`discord-gateway/`](discord-gateway/)
+- Intent **Message Content** obligatoire
+- Cache RAM des messages vus → embed dans le salon logs à la suppression
+- **Ne tourne pas** sur Cloudflare Workers (hébergement always-on requis)
 
 ### 3.6 Automatisations (cron)
 
@@ -207,6 +219,7 @@ node scripts/register-discord-commands.mjs
 - [x] Peaufinage mobile du formulaire admin (`/admin/app`)
 - [x] Fix menu hamburger (zone tactile + couches) et chargement site (intro / reveal)
 - [x] Liste déroulante des employés sur le formulaire admin
+- [x] Logs suppression messages (Gateway `discord-gateway/`, salon logs)
 
 ### À faire / idées prioritaires
 
@@ -215,6 +228,7 @@ node scripts/register-discord-commands.mjs
 - [ ] **Timeout auto** — après X jours : alerte forte ou refus / archivage
 - [ ] **`/export`** — CSV de la période en pièce jointe Discord
 - [ ] Domaine custom final + migration complète Discord endpoints (si pas déjà fait)
+- [ ] Héberger `discord-gateway` 24/7 (Railway / Render / VPS) si pas encore fait
 
 ### Plus tard / nice-to-have
 

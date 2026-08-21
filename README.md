@@ -10,6 +10,7 @@ Structure :
 ```text
 site/                 # assets publics (vitrine + formulaire admin)
 worker.js             # logique Worker
+discord-gateway/      # bot Gateway — logs suppressions (hébergement séparé 24/7)
 wrangler.jsonc
 scripts/              # enregistrement commandes Discord
 SETUP-WORKERS.md      # secrets & procédures
@@ -17,6 +18,8 @@ projet.md             # contexte / features / roadmap
 ```
 
 Le binding KV `SITE_STATE` et les secrets se configurent dans le dashboard Cloudflare (`keep_vars: true`).
+
+Logs de suppression Discord : voir [`discord-gateway/README.md`](discord-gateway/README.md).
 
 ## Cloudflare Workers Builds
 

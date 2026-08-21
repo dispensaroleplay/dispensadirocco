@@ -484,3 +484,15 @@ Mention staff : variable `PRODUCTION_STAFF_ROLE_ID` (ID du rôle à pinger).
 Rappel auto : chaque heure, si une déclaration attend depuis plus de `PRODUCTION_PENDING_REMINDER_HOURS` (défaut 6 h), alerte dans le salon alertes (une seule fois).
 
 Nécessite `DISCORD_BOT_TOKEN` + rôle `DISCORD_BOT_ROLE_IDS`. Données en attente stockées 7 jours en KV.
+
+## Logs de suppression de messages (Gateway)
+
+Le Worker ne reçoit pas `MESSAGE_DELETE`. Le dossier [`discord-gateway/`](discord-gateway/) fait tourner un process Node 24/7.
+
+1. Developer Portal → Bot → active **Message Content Intent**
+2. Le bot doit pouvoir lire tous les salons + écrire dans `1540326524484583465` + **View Audit Log**
+3. Héberge `discord-gateway` (Railway / Render / VPS) avec :
+   - `DISCORD_BOT_TOKEN`
+   - `DISCORD_GUILD_ID=1529971523924791478`
+   - `DISCORD_DELETE_LOG_CHANNEL_ID=1540326524484583465`
+4. Détails : [`discord-gateway/README.md`](discord-gateway/README.md)
