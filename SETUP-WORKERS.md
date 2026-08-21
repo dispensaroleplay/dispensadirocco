@@ -485,14 +485,13 @@ Rappel auto : chaque heure, si une déclaration attend depuis plus de `PRODUCTIO
 
 Nécessite `DISCORD_BOT_TOKEN` + rôle `DISCORD_BOT_ROLE_IDS`. Données en attente stockées 7 jours en KV.
 
-## Logs de suppression de messages (Gateway)
+## Logs de suppression de messages (Cloudflare only)
 
-Le Worker ne reçoit pas `MESSAGE_DELETE`. Le dossier [`discord-gateway/`](discord-gateway/) fait tourner un process Node 24/7.
+Sans Gateway Discord, le Worker lit les **audit logs** toutes les **5 minutes** et poste dans le salon :
 
-1. Developer Portal → Bot → active **Message Content Intent**
-2. Le bot doit pouvoir lire tous les salons + écrire dans `1540326524484583465` + **View Audit Log**
-3. Héberge `discord-gateway` (Railway / Render / VPS) avec :
-   - `DISCORD_BOT_TOKEN`
-   - `DISCORD_GUILD_ID=1529971523924791478`
-   - `DISCORD_DELETE_LOG_CHANNEL_ID=1540326524484583465`
-4. Détails : [`discord-gateway/README.md`](discord-gateway/README.md)
+`DISCORD_DELETE_LOG_CHANNEL_ID` = `1540326524484583465`
+
+Chaque entrée indique : salon, auteur du message, qui a supprimé.  
+**Le contenu du message n’est pas disponible** (limitation Discord sans Gateway).
+
+Prérequis bot : permission **View Audit Log** + droit d’écrire dans le salon de logs.
