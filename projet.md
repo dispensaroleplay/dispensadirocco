@@ -98,7 +98,7 @@ Champs :
 **Flux :**
 
 1. `POST /api/submit` (session admin requise)
-2. Message Discord dans `#production-whebooks` via **Bot** (+ mention rôle staff optionnelle)
+2. Message Discord dans `#production-whebooks` via **Bot** (+ mention rôle staff optionnelle + **@ employé** si ID connu)
 3. Boutons **Valider** (vert) / **Refuser** (rouge)
 4. **Rien dans Sheets** tant que non validé
 5. **Valider** → append Google Sheets  

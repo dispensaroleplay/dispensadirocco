@@ -20,6 +20,36 @@ const PRODUCTION_DEDUP_TTL = 60 * 60;
 const PRODUCTION_PENDING_TTL = 60 * 60 * 24 * 7;
 const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
+/** Nom formulaire admin → ID Discord (ping @ employé dans #production) */
+const EMPLOYEE_DISCORD_IDS = {
+  "Francis Lebergeron": "1383156670120595506",
+  "Housni Cruz": "790249114079199253",
+  "James Taylor": "1250098985482588181",
+  "Julien Phantom": "1203802319670743151",
+  "Eneo Merliot": "995257605737943090",
+  "Louis Courgette": "1451943997521268908",
+  "Thomas Lemasson": "743546641423925319",
+  "Mathieu Lemoine": "849550469419892756",
+  "Mehdi Tulipe": "1065703017711681567",
+  "Sizley Dasilva": "1245046656739577856",
+  "Steeven King": "1213503249093492816"
+};
+
+function resolveEmployeeDiscordUserId(nom) {
+  const name = String(nom || "").trim();
+  if (!name || name === "BOT") return null;
+  const id = EMPLOYEE_DISCORD_IDS[name];
+  return id && /^\d+$/.test(id) ? id : null;
+}
+
+function buildProductionAllowedMentions(staffRoleId, employeeUserId) {
+  const roles =
+    staffRoleId && /^\d+$/.test(staffRoleId) ? [staffRoleId] : [];
+  const users =
+    employeeUserId && /^\d+$/.test(employeeUserId) ? [employeeUserId] : [];
+  return { parse: [], roles, users };
+}
+
 function json(data, init = {}) {
   return new Response(JSON.stringify(data), {
     ...init,
@@ -1727,14 +1757,18 @@ async function handleProductionValidateButton(interaction, env) {
 
 async function postProductionDiscordMessage(env, nom, stock, proofFiles = []) {
   const staffRoleId = String(env.PRODUCTION_STAFF_ROLE_ID || "").trim();
-  const mention = /^\d+$/.test(staffRoleId) ? `<@&${staffRoleId}> ` : "";
+  const staffMention = /^\d+$/.test(staffRoleId) ? `<@&${staffRoleId}> ` : "";
+  const employeeUserId = resolveEmployeeDiscordUserId(nom);
+  const employeeLabel = employeeUserId
+    ? `<@${employeeUserId}>`
+    : String(nom || "").trim();
   const files = Array.isArray(proofFiles)
     ? proofFiles.filter(file => file instanceof File || file instanceof Blob)
     : [];
 
   const content =
-    `${mention}Nouvelle déclaration de production\n` +
-    `Nom : ${nom}\n` +
+    `${staffMention}Nouvelle déclaration de production\n` +
+    `Employé : ${employeeLabel}\n` +
     `Stock produit : ${stock}` +
     (files.length > 1 ? `\nPreuves : ${files.length} images` : "");
 
@@ -1762,9 +1796,7 @@ async function postProductionDiscordMessage(env, nom, stock, proofFiles = []) {
   const payload = {
     content,
     components,
-    allowed_mentions: /^\d+$/.test(staffRoleId)
-      ? { parse: [], roles: [staffRoleId] }
-      : { parse: [] }
+    allowed_mentions: buildProductionAllowedMentions(staffRoleId, employeeUserId)
   };
 
   const endpoint = `https://discord.com/api/v10/channels/${channelId}/messages`;
