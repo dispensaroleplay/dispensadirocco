@@ -22,6 +22,8 @@ const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 /** Nom formulaire admin → ID Discord (ping @ employé dans #production) */
 const EMPLOYEE_DISCORD_IDS = {
+  "David Rocco": "834040784818536508",
+  "Jayson Smith": "606028135904968714",
   "Francis Lebergeron": "1383156670120595506",
   "Housni Cruz": "790249114079199253",
   "James Taylor": "1250098985482588181",
